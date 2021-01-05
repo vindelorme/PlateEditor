@@ -1,0 +1,13 @@
+.PlateTable {
+	border-collapse: collapse;
+	text-align: center;
+	/*font-size: 0.7em;*/
+}
+.PlateTable td {
+	border: 1px solid black;
+	padding: 1px 5px; 
+}
+.Error {
+	font-style: italic;
+	color: tomato;
+}
