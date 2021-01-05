@@ -1,0 +1,42 @@
+﻿<!DOCTYPE HTML>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title>PlateEditor</title>
+	<link href="dist/editor-styles.css" rel="stylesheet" type="text/css">
+	<link href="dist/shared-styles.css" rel="stylesheet" type="text/css">
+
+	<script type="text/javascript" src="dependencies/papaparse.min.js"></script> <!--// https://www.papaparse.com //-->
+	<script type="text/javascript" src="dependencies/jszip.min.js"></script> <!--// http://stuk.github.io/jszip //-->
+	
+	<script type="text/javascript" src="dist/shared.min.js"></script>
+	<script type="text/javascript" src="dist/editor.min.js"></script>
+	<script type="text/javascript">
+		window.onload = function() {Editor.init()}
+	</script>
+</head>
+
+<body style="font-family: arial; font-size: 16px">
+
+<div id="Header">
+	<p style="text-align: center"><b>PlateEditor</b></p>
+</div>
+
+<div id="Console" class="LinkCtrl_Tab LinkCtrl_Round" style="padding: 0.3em">
+	<p style="text-align: center">Welcome to PlateEditor!</p>
+</div>
+
+<div>
+	<div id="Editor_Popup" class="Popup"></div>
+	<div id="Editor_Menu" style="float: left; width: 23em; max-height: 85vh; overflow: auto"></div>
+	<div id="Editor_Main" style="margin-left: 24em; max-height: 85vh; overflow: auto"></div>
+</div>
+
+<div id="Footer">
+	<a href="https://sourceforge.net/p/plateeditor/wiki/Home/" target="_blank" rel="noreferrer noopener">PlateEditor Wiki</a> -
+	PlateEditor Home pages: <a href="https://sourceforge.net/projects/plateeditor/" target="_blank" rel="noreferrer noopener">SourceForge</a> |
+	<a href="https://github.com/vindelorme/PlateEditor" target="_blank" rel="noreferrer noopener">GitHub</a>
+</div>
+
+</body>
+</html>
