@@ -189,8 +189,22 @@ class Report_Grouped extends Report {
 			FindAll: true,
 		}
 		return new Promise(function(resolve) {
-			d.Mapper.find(d, args).then(function(array) {resolve(array)});
-		});
+			d.Mapper.find(d, args).then(function(array) {
+				let mode = Mapper.modeWellPlate(d.Mapping);
+				switch(mode) { //For mapping without well location, the array returned is the list of object available, can be returned as is. Otherwise, should convert the plate array to a flat array of item
+					case "Plate": //FALL-THROUGH
+					case "Direct": resolve(array); break;
+					case "Well": //FALL-THROUGH
+					case "PlateWell": 
+						let items = [];
+						this.Ranges[defIndex].Values.forEach(function(v) { //Look at the individual items for this range
+							items.push(array[v.Tags[0]]); //Get the index of the first well tagged for this rangeItem, and log its definition. We enforce here that other wells for this RangeItem share the same definition, even if this is wrong
+						});
+						resolve(items);
+					break;
+				}
+			}.bind(this));
+		}.bind(this));
 	}
 	updateNames(range, index) { //Update the names for the rangeIndex provided, or all the ranges if nothing is passed
 		let source = this.Ranges; //Fallback that will be used if range is undefined

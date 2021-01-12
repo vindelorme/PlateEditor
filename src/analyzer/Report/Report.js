@@ -4,8 +4,10 @@
 class Report {
 	constructor(o) {
 		let html = "";
-		html += "<div id=\"Menu\" style=\"width: 350px; overflow: auto; float: left\"></div>";
-		html += "<div id=\"Output\" style=\"margin-left: 370px\"></div>";
+		//html += "<div id=\"Menu\" style=\"width: 350px; overflow: auto; float: left\"></div>";
+		//html += "<div id=\"Output\" style=\"margin-left: 370px\"></div>";
+		html += "<div id=\"Menu\"></div>";
+		html += "<div id=\"Output\"></div>"
 		GetId("Main").innerHTML = html;
 		this.Title = o.Title;
 		let f = o.FileName;
@@ -57,7 +59,7 @@ class Report {
 	//Static methods
 	static new(o) {
 		switch(o.Method) {
-			case "zScore": return new Report_zScore(o);
+			case "zFactor": return new Report_Controls(o);
 			case "Aggregate": return new Report_Aggregate(o);
 			case "Grouped": return new Report_Grouped(o);
 			default: return new Report(o);

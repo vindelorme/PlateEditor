@@ -43,7 +43,7 @@ class Report_Aggregate extends Report {
 			}
 		}, this);
 		this.resolveAllNames().then(function() { //Start by recovering all definitions names
-			this.computeStats({UpdateNames: true}); //Compute the stats
+			this.computeStats(); //Compute the stats
 		}.bind(this));
 		return this;
 	}
@@ -77,14 +77,28 @@ class Report_Aggregate extends Report {
 			FindAll: true,
 		}
 		return new Promise(function(resolve) {
-			d.Mapper.find(d, args).then(function(array) {resolve(array)});
-		});
+			d.Mapper.find(d, args).then(function(array) {
+				let mode = Mapper.modeWellPlate(d.Mapping);
+				switch(mode) { //For mapping without well location, the array returned is the list of object available, can be returned as is. Otherwise, should convert the plate array to a flat array of item
+					case "Plate": //FALL-THROUGH
+					case "Direct": resolve(array); break;
+					case "Well": //FALL-THROUGH
+					case "PlateWell": 
+						let items = [];
+						this.Ranges[defIndex].Values.forEach(function(v) { //Look at the individual items for this range
+							items.push(array[v.Tags[0]]); //Get the index of the first well tagged for this rangeItem, and log its definition. We enforce here that other wells for this RangeItem share the same definition, even if this is wrong
+						});
+						resolve(items);
+					break;
+				}
+			}.bind(this));
+		}.bind(this));
 	}
 	updateNames(range, index) { //Update the names for the rangeIndex provided, or all the ranges if nothing is passed
 		let source = this.Ranges;
 		if(range !== undefined) { //A specific range is provided
 			source = Array(this.Ranges.length);
-			source[index] = range; //This is to ensure we can use the position in the array to find the correct definitions
+			source[index] = range; //Create an empty array except for this index. This is to ensure we can use this index to find the matching definitions
 		}
 		let collection = GetId("Output").getElementsByTagName("TH");
 		let l = collection.length;
@@ -150,14 +164,14 @@ class Report_Aggregate extends Report {
 			});
 		}, this);
 	}
-	computeStats(I) {
+	computeStats() {
 		let plate = this.UI.Plate.Selected;
 		this.getValues(plate).then(function(data) { //Collect values for this plate
 			let stats = this.processValues(data, plate); //Display the individual values and compute the stats
 			if(this.Result.PlatesID.length > 1) { //If there are more than one plate attached to this result, then also create/update the Plate summary table
 				this.plateSummary(data, plate, stats);
 			}
-			if(I && I.UpdateNames) {this.updateNames()}
+			this.updateNames();
 		}.bind(this));
 		return this;
 	}
