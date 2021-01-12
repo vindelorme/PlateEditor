@@ -162,7 +162,7 @@ class Editor {
 			{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
 		]));*/
 		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
-			{Label: "Z-score", Title: "Compute the Z-score using the control defined in the layout", Click: function() {this.zScore()}.bind(this)},
+			{Label: "Controls", Title: "Aggregate data for the controls defined in the layout and compute Z-factors", Click: function() {this.zFactor()}.bind(this)},
 			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.aggregate()}.bind(this)},
 			{Label: "Grouped Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as two-entry tables", Click: function() {this.grouped()}.bind(this)},
 		]));
@@ -171,8 +171,9 @@ class Editor {
 //**********************
 // PLATE-RELATED METHODS
 //**********************
-	static warn(that) { //A form that will warn the user before doing something irreversible and potentially damaging
+	static warn(that, I) { //A form that will warn the user before doing something irreversible and potentially damaging
 		if(this.Plate === undefined && this.Tables.Areas.Array.length == 0 && this.Tables.Results.Array.length == 0) {return Promise.resolve()}
+		if(I && I.Silent) {return Promise.resolve()} //Skip the warning if it has already been shown and approved before
 		let id = "Form_Warning";
 		let msg = "This will reset the entire project.<br>All tags, areas, definitions and results will be discarded.";
 		let title = "Reset layout";
@@ -201,12 +202,12 @@ class Editor {
 	static newPlate(r, c) { //Create a new plate
 		if(this.Plate) { //A plate already exist
 			if(this.Plate.Rows != r || this.Plate.Cols != c) { //Confirmation before resizing
-				var id = "Form_Resize";
-				var idArea = id + "_RadioArea";
-				var idConc = id + "_RadioConc";
-				var RadioArea = LinkCtrl.new("Radio", {ID: idArea, Default: 0, Preserve: true, List: ["Keep", "Discard"], Title: "Keep will maintain area tagging data for the wells still available in the new plate"});
-				var RadioConc = LinkCtrl.new("Radio", {ID: idConc, Default: 0, Preserve: true, List: ["Keep", "Discard"], Title: "Keep will maintain concentration values for the wells still available in the new plate"});
-				var html = "<div style=\"text-align: center\"><p>This will resize your plate to the new dimensions.<br>Select what should be done with previously entered data:</p></div>";
+				let id = "Form_Resize";
+				let idArea = id + "_RadioArea";
+				let idConc = id + "_RadioConc";
+				let RadioArea = LinkCtrl.new("Radio", {ID: idArea, Default: 0, Preserve: true, List: ["Keep", "Discard"], Title: "Keep will maintain area tagging data for the wells still available in the new plate"});
+				let RadioConc = LinkCtrl.new("Radio", {ID: idConc, Default: 0, Preserve: true, List: ["Keep", "Discard"], Title: "Keep will maintain concentration values for the wells still available in the new plate"});
+				let html = "<div style=\"text-align: center\"><p>This will resize your plate to the new dimensions.<br>Select what should be done with previously entered data:</p></div>";
 				html += "<fieldset id=\"" + idArea + "\"><legend>Area data</legend></fieldset>";
 				html += "<fieldset id=\"" + idConc + "\"><legend>Concentration data</legend></fieldset>";
 				html += "<div class=\"Error\" style=\"text-align: center\"><p>Data for wells outside the new plate dimensions will be discarded</p></div>";
@@ -237,14 +238,14 @@ class Editor {
 		return this;
 	}
 	static resize(r, c, KeepArea, KeepConc) { //Resize the layout to the new dimensions. Keep or erase previous Area/Conc data 
-		if(KeepArea == "Discard") {this.untagAllArea()}
+		if(KeepArea == "Discard") {this.untagAllArea({Silent: true})}
 		else { //Keep the area data
 			if(r <= this.Plate.Rows && c <= this.Plate.Cols) { //In case of downsizing, crop exceeding wells and update the ranges
 				Area.resize(this.Tables.Areas.Array, this.Plate, r, c);
 				this.Tables.Areas.update(); //Update display to reflect changes
 			}
 		} 
-		if(KeepConc == "Discard") {this.resetConc()}
+		if(KeepConc == "Discard") {this.resetConc({Silent: true})}
 		Plate.resize(this.Plate, r, c);
 		this.Console.log({Message: "Plate dimensions changed", Gravity: "Success", Reset: true});
 		return this;
@@ -438,12 +439,12 @@ class Editor {
 		this.Console.log({Message: R.Untag + " wells untagged", Gravity: "Success"});
 		return this;
 	}
-	static untagAllArea() {
+	static untagAllArea(I) {
 		if(this.Plate === undefined) {return this}
 		let A = this.Tables.Areas;
 		let plate = this.Plate;
 		if(A.Length > 0) {
-			this.warn("tag").then(function() {
+			this.warn("tag", I).then(function() {
 				A.Array.forEach(function(a) { //For each area defined
 					a.removeTags(plate); //Remove tags
 					a.Tags = []; //Reset the tag arrays
@@ -503,9 +504,9 @@ class Editor {
 		else {this.Console.log({Message: "Concentration removed in " + S + " wells", Gravity: "Success"})}
 		return this;
 	}
-	static resetConc() { //Reset concentrations for the entire plate
+	static resetConc(I) { //Reset concentrations for the entire plate
 		if(this.Plate === undefined) {return this}
-		this.warn("conc").then(function() {
+		this.warn("conc", I).then(function() {
 			this.Plate.resetConc();
 		}.bind(this), function() {});
 	}
@@ -577,12 +578,12 @@ class Editor {
 		if(results.length == 0) {this.Console.log({Message: "No result file selected", Gravity: "Error"}); return false}
 		return results[0];
 	}
-	static zScore() { //Compute and report z-score across all plates
+	static zFactor() { //Compute and report z-factor across all plates
 		let result = this.analysisCheck();
 		if(result == false) {return this} //Error
 		let controls = Area.getControls(this.Tables.Areas.Array);
 		if(controls.Count == 0) {this.Console.log({Message: "No controls defined in the current layout", Gravity: "Error"}); return this}
-		Reporter.zScore(controls, result);
+		Reporter.zFactor(controls, result);
 		return this;
 	}
 	static aggregate() { //Compute and report stats for aggregated areas (column analysis)
