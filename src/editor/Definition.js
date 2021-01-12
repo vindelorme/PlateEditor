@@ -158,7 +158,7 @@ class Definition {
 				{Label: "Printable version", Click: function() {
 					Reporter.printable(GetId(preview).innerHTML);
 				}, Title: "Open the map in a new window to allow easy printing or copy/pasting to other applications"},
-				{Label: "Done", Icon: {Type: "Cancel", Space: true, Color: "Red"}, Click: function() {Form.close(id)}},
+				{Label: "Done", Icon: {Type: "Ok", Space: true, Color: "Green"}, Click: function() {Form.close(id)}},
 			],
 			onInit: function() { //Initialize the respTable on open
 				rangeTable.init();
@@ -254,7 +254,7 @@ class Definition {
 						if(value.length == 0) {value = "<span class=\"Error\">&Oslash;</span>"} //Mark tagged wells without definitions
 					}
 					else { //Non tagged wells
-						if(value.length > 0) {value = "<span class=\"Error\">" + value + "</span>"} //Also mark defintions outside tagged areas
+						if(value.length > 0) {value = "<span class=\"Error\">" + value + "</span>"} //Also mark definitions outside tagged areas
 					}
 					html += "<td style=\"background-color: " + color + "\">" + value + "</td>";
 				}
