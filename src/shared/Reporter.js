@@ -115,9 +115,9 @@ class Reporter {
 		});
 		return output;
 	}
-	static zScore(controls, result) { //Compute z-score for the result file passed, using the controls provided
-		window.zScore = {Controls: this.combination(controls, {Conc: true, Tags: true}), Result: result}
-		this.openReport("", {Title: "Z-Score Report", FileName: result.Name, Method: "zScore"});
+	static zFactor(controls, result) { //Compute z-score for the result file passed, using the controls provided
+		window.zFactor = {Controls: this.combination(controls, {Conc: true, Tags: true}), Result: result}
+		this.openReport("", {Title: "Control Report", FileName: result.Name, Method: "zFactor"});
 	}
 	static aggregate(areas, result) { //Compute stats for the result file passed, using the areas provided
 		areas.R.forEach(function(range) {
