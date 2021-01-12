@@ -1,8 +1,16 @@
 #Header {
 	text-align: center;
 }
-#Main {
-	
+#Main {}
+#Menu {
+	width: 20%;
+	margin-right: 20px;
+	min-width: 320px;
+	float: left;
+	overflow: auto;
+}
+#Output {
+	overflow: auto;
 }
 #Footer {
 	text-align: center;
@@ -33,7 +41,7 @@ legend {
 	text-align: center;
 }
 .Section {
-	max-width: 75vw;
+	max-width: 72vw;
 	overflow: auto;
 	padding: 0px 5px;
 }
