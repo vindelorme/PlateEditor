@@ -451,14 +451,13 @@ class Editor {
 					if(a.Type == "Range") {
 						a.MaxRange = 0; //Reset the ranges
 						Area.rangeInfo(a); //Update info
-						updateTable = true;
 					}
 				});
+				A.update(); //Update the areas table to reflect any changes in ranges
 				this.Console.log({Message: "All wells untagged", Gravity: "Success"});
 			}.bind(this), function() {});
 		}
 		else {this.Console.log({Message: "No area defined", Gravity: "Warning"})}
-		A.update(); //Update the areas table to reflect any changes in ranges
 		return this;
 	}
 	static deleteArea(a) { //Delete selected area a
