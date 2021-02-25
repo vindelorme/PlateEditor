@@ -1,0 +1,57 @@
+/*********************************************************************/
+/*Styles for Responsive tables*/
+/*********************************************************************/
+.RespTable {
+	background: #f5f5f5;
+	color: #696969;
+	border-collapse: collapse;
+	font-size: 0.9em;
+	text-align: center;
+}
+.RespTable tr {
+	border-top: 1px solid silver;
+	border-bottom: 1px solid silver;
+}
+.RespTable th, .RespTable td {
+	padding: 0.3em;
+}
+.RespTable_Row {
+	cursor: pointer;
+}
+.RespTable_Row:hover {
+	color: black;
+	background: lavender;
+}
+.RespTable_Row:active {
+	background: cornflowerblue;
+	color: white;
+}
+.RespTable_Selected {
+	background: cornflowerblue;
+	color: white;
+}
+.RespTable_Selected:hover {
+	background: royalblue;
+	color: white;
+}
+.RespTable_Error {
+	background: tomato;
+	color: white;
+}
+.RespTable_Error:hover {
+	color: red;
+}
+/*
+.RespTable_Row {
+	font-size: 0.9em;
+}
+.RespTable_Row td {
+	padding: 5px;
+}
+.RespTable_Row:hover {
+	background-color: LemonChiffon;
+}
+.RespTable_Selected td {
+	background-color: Orange;
+}
+*/

@@ -1,0 +1,226 @@
+/***********************************************************/
+/*General styles used by the LinkedCtrl and control objects*/
+/***********************************************************/
+.LinkCtrl {
+	font-size: 0.9em;
+	border: 1px solid silver;
+	background: whitesmoke;
+	color: dimgray;
+	padding: 0.5em;
+	text-align: center;
+	line-height: 2.5em;
+	cursor: pointer;
+}
+.LinkCtrl_Disabled {
+	background: lightgray;
+	color: dimgray;
+	cursor: default;
+}
+.LinkCtrl_Resting:hover {
+	background: lavender;
+	color: black;
+	user-select: none;
+}
+.LinkCtrl_Resting:active {
+	border: 1px solid blue;
+	background: cornflowerblue;
+	color: white;
+}
+.LinkCtrl_Chain {}
+.LinkCtrl_Active {
+	border: 1px solid blue;
+	background: cornflowerblue;
+	color: white;
+}
+.LinkCtrl_Active:hover {
+	border: 1px solid darkblue;
+	background: royalblue;
+	user-select: none;
+}
+.LinkCtrl_RoundR { /*Round corners on the Right*/
+	border-bottom-right-radius: 4px;
+	border-top-right-radius: 4px;
+}
+.LinkCtrl_RoundL { /*Round corners on the Left*/
+	border-bottom-left-radius: 4px;
+	border-top-left-radius: 4px;
+}
+.LinkCtrl_RoundT { /*Round corners at the Top*/
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+}
+.LinkCtrl_RoundB { /*Round corners at the Bottom*/
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+}
+.LinkCtrl_Round { /*Round corners for everyone!*/
+	border-radius: 4px;
+}
+.LinkCtrl_Label {
+	padding-right: 0.5em;
+	cursor: pointer;
+}
+.LinkCtrl_ChkBox {
+	cursor: pointer;
+	vertical-align: middle;
+}
+.LinkCtrl_Select {
+	padding: 0.2em;
+	cursor: pointer;
+}
+.LinkCtrl_SelectLookup {
+	position: absolute;
+	background-color: lemonchiffon;
+	border: 1px solid orange;
+	border-radius: 4px;
+	padding: 0.2em 0.5em;
+	cursor: auto;
+	z-index: 1000;
+}
+.LinkCtrl_Color {
+	cursor: pointer;
+	border: 1px solid black;
+}
+.LinkCtrl_Number {
+	text-align:right;
+}
+.LinkCtrl_Text {
+	text-align:center;
+}
+.LinkCtrl_TextArea {
+	height: 150px;
+	width: 250px;
+	white-space: pre;
+	font-size: 0.9em;
+	padding: 0.2em;
+	color: black;
+}
+.LinkCtrl_TextAreaEnabled {
+	background-color: white;
+	cursor: text;
+}
+.LinkCtrl_TextAreaEnabled:hover {
+	background-color: ivory;
+}
+.LinkCtrl_TextAreaDisabled {
+	background-color: whitesmoke;
+	cursor: default;
+}
+.LinkCtrl_Inline {
+	display: inline;
+}
+.LinkCtrl_FileDrop {
+	height: 50px;
+	color: gray;
+	font-style: italic;
+	border: 2px dashed gray;
+	text-align: center;
+	font-size: 0.9em;
+	margin: 5px;
+}
+.LinkCtrl_FileDropInner {
+	position: relative;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+.LinkCtrl_FileDropHover {
+	border: 2px solid blue;
+}
+.LinkCtrl_FileDropError {
+	color: salmon;
+}
+/******************************/
+/*Styles for icons in controls*/
+/******************************/
+.LinkCtrl_Icon {
+	background-image: url("../images/Icon_set.png");
+	background-repeat: no-repeat;
+	display: inline-block;
+	width: 50px;
+	height: 50px;
+	vertical-align: text-top;
+}
+.LinkCtrl_IconSmall {
+	transform: scale(0.25);
+	margin: -17px;
+}
+.LinkCtrl_IconMedium {
+	transform: scale(0.5);
+	margin: -5px;
+}
+.LinkCtrl_IconBig {
+	transform: scale(1);
+	margin: 0;
+}
+.LinkCtrl_IconActive {
+	cursor: pointer;
+	filter: brightness(1000%); /*white*/
+}
+.LinkCtrl_IconActive:hover {
+	filter: sepia(100%) saturate(1000%) brightness(250%); /*orange*/
+}
+.LinkCtrl_IconActive:active {
+	filter: sepia(100%) saturate(1500%); /*red*/
+}
+.LinkCtrl_IconDisabled {
+	filter: sepia(100%) saturate(1000%);
+	cursor: default;
+}
+.LinkCtrl_IconResting {cursor: pointer} /*dark grey per default*/
+.LinkCtrl_IconResting:hover {
+	filter: sepia(100%) saturate(1000%) hue-rotate(180deg); /*Blue*/
+}
+.LinkCtrl_IconResting:active {
+	filter: brightness(1000%); /*white*/
+}
+/********************************/
+/*Styles used by the Tab objects*/
+/********************************/
+.LinkCtrl_Tab {
+	border: 1px solid silver;
+	overflow: auto;
+}
+.LinkCtrl_TabHeaders { /*Wrapper for the headers (each header is a span with LinkCtrl styling)*/
+	background: #e9e9e9;
+	padding: 0em 0.3em;
+	clear: both;
+	font-weight: bold;
+}
+.LinkCtrl_TabContents { /*Wrapper for the contents (each content is a div with TabPanel Styling)*/
+	overflow: auto;
+}
+.LinkCtrl_TabPanel { /*Styling for a tab content*/
+	margin: 0.5em;
+}
+
+
+/*
+Using thses fucking <button> elements leads you knowwhere good,
+as it becomes impossible to have homogenous height and text size
+with the rest of the controls. <span> works just fine...
+
+.LinkCtrl_Button {
+	font-size: 0.9em;
+	border: 1px solid silver;
+	background: whitesmoke;
+	color: dimgray;
+	padding: 0.5em;
+	text-align: center;
+	vertical-align: middle;
+	cursor: pointer;
+	border-bottom-right-radius: 4px;
+	border-top-right-radius: 4px;
+	border-bottom-left-radius: 4px;
+	border-top-left-radius: 4px;
+}
+.LinkCtrl_Button:hover {
+	background: #ededed;
+	color: black;
+}
+.LinkCtrl_Button:active {
+	border: 1px solid blue;
+	background: #3399ff;
+	color: white;
+}
+*/
