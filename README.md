@@ -9,11 +9,34 @@ PlateEditor is fully client-side: no data are ever transferred to the server, en
 
 ## Installation
 
-There is no installation required.
-- If you have Internet access, simply go to the [PlateEditor](https://plateeditor.sourceforge.io) webpage and enjoy the latest version of the application.
+For users, there is no installation required.
+- If you have Internet access, simply connect to [PlateEditor.com](https://plateeditor.sourceforge.io) and enjoy the latest version of the application.
 - If you plan to work offline, download the latest available build here: [Latest build](https://sourceforge.net/projects/plateeditor/), unzip the files in your computer and open 'Editor.html' with your web browser.
 Be sure to retrieve the latest build regularly to ensure you can use all the new functionalities!
 
+For developers, there are dependencies required for the compilation of the source code using Gulp. They are all listed in the _package.lock_ file and can be installed using the _npm_ _install_ command. Here is the step-by-step guide:
+- Make sure [nodeJS](https://nodejs.org) is installed on your computer.
+- Download the source code from GitHub to your computer (or clone the repository using your Git)
+- To install all the required dependencies, open a terminal, navigate to the source folder and run:
+
+```
+npm install
+```
+
+- To create the minimized and collated js and css files required for the application, run the following command in your ternminal:
+
+```
+npm run compil
+```
+
+This will create the dist/ directory with the required files and sourcemaps in it. Open the application (Editor.html) to test and validate your changes.
+The following command can also be used to generate a .zip file containing all the components needed in the bundled version of the application:
+
+```
+npm run release
+```
+
+Of course, the gulpfile.js file can be updated to modify these commands or create new ones, as desired. In this case, don't forget to edit the package.json file to register the new scripts.
 
 ## Overview
 
@@ -44,7 +67,7 @@ For grouped analysis, you will be able to select the data you want to see as row
 For a more complete and detailed presentation of all PlateEditor's functionalities, check-out the on-line [wiki](https://sourceforge.net/p/plateeditor/wiki/Home/).
 
 ## Contributing
-Please let us know if you encounter bugs or display issues in your browser.
+Please let us know if you encounter bugs or encounter display issues in your browser.
 
 
 ## License
