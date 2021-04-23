@@ -17,8 +17,8 @@ gulp.task("clean", function(cb) {
 	.pipe(clean());
 });
 gulp.task("build", function(cb) {
-	//let apps = ["editor", "plotter", "helper", "grapher", "shared", "analyzer"];
-	let apps = ["editor", "shared", "analyzer"];
+	//let apps = ["editor", "plotter", "helper", "grapher", "shared", "analyzer", "ui"];
+	let apps = ["editor", "shared", "analyzer", "ui"];
 	apps.forEach(function(a) { //Loop the array of apps to build
 		//Build the js files
 		gulp.src(paths.src + a + "/**/*.js")

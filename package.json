@@ -1,0 +1,42 @@
+{
+  "name": "plateeditor",
+  "version": "1.0.0",
+  "description": "PlateEditor is a free web application to work with multi-well plates, from creation of layouts to data visualization and aggregation",
+  "main": "gulpfile.js",
+  "scripts": {
+    "test": "echo \"no test defined\"; exit 0",
+    "compil": "gulp",
+    "release": "gulp release"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vindelorme/PlateEditor.git"
+  },
+  "keywords": [
+    "visualization",
+    "analysis",
+    "layout",
+    "multi-well"
+  ],
+  "author": "Vincent PKDA Delorme",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vindelorme/PlateEditor/issues"
+  },
+  "homepage": "https://github.com/vindelorme/PlateEditor#readme",
+  "dependencies": {
+    "jszip": "^3.6.0",
+    "papaparse": "^5.3.0"
+  },
+  "devDependencies": {
+    "gulp": "^4.0.2",
+    "gulp-clean": "^0.4.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-csso": "^4.0.1",
+    "gulp-rename": "^2.0.0",
+    "gulp-sourcemaps": "^3.0.0",
+    "gulp-uglify-es": "^2.0.0",
+    "gulp-zip": "^5.1.0",
+    "merge-stream": "^2.0.0"
+  }
+}

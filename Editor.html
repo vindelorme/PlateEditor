@@ -3,20 +3,23 @@
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
 	<title>PlateEditor</title>
+	<link href="dist/ui-styles.css" rel="stylesheet" type="text/css">
 	<link href="dist/editor-styles.css" rel="stylesheet" type="text/css">
 	<link href="dist/shared-styles.css" rel="stylesheet" type="text/css">
 
 	<script type="text/javascript" src="dependencies/papaparse.min.js"></script> <!--// https://www.papaparse.com //-->
 	<script type="text/javascript" src="dependencies/jszip.min.js"></script> <!--// http://stuk.github.io/jszip //-->
 	
+	<script type="text/javascript" src="dist/ui.min.js"></script>
 	<script type="text/javascript" src="dist/shared.min.js"></script>
 	<script type="text/javascript" src="dist/editor.min.js"></script>
+	
 	<script type="text/javascript">
 		window.onload = function() {Editor.init()}
 	</script>
 </head>
 
-<body style="font-family: arial; font-size: 16px">
+<body style="font-family: arial; font-size: 16px" ondrop="event.preventDefault()" ondragover="event.preventDefault()">
 
 <div id="Header">
 	<p style="text-align: center"><b>PlateEditor</b></p>
@@ -36,8 +39,8 @@
 	<p>
 		<a href="https://sourceforge.net/p/plateeditor/wiki/Home/" target="_blank" rel="noreferrer noopener">PlateEditor Wiki</a> - 
 		PlateEditor Home pages:
-		<a href="https://sourceforge.net/p/plateeditor/" target="_blank" rel="noreferrer noopener"><img alt="PlateEditor" src="images/sourceforge.png" style="vertical-align: middle"></a>
-		<a href="https://github.com/vindelorme/PlateEditor" target="_blank" rel="noreferrer noopener"><img alt="GitHub" src="images/github.jpg" style="vertical-align: middle"></a>
+		<a href="https://sourceforge.net/p/plateeditor/" target="_blank" rel="noreferrer noopener"><img alt="PlateEditor" src="images/sourceforge.png" style="vertical-align: middle; height: 20px"></a>
+		<a href="https://github.com/vindelorme/PlateEditor" target="_blank" rel="noreferrer noopener"><img alt="GitHub" src="images/github.jpg" style="vertical-align: middle; height: 20px"></a>
 		<br>
 		Txt/Csv file streaming powered by <a href="https://www.papaparse.com" target="_blank" rel="noreferrer noopener">PapaParse</a>; Zip archive management powered by <a href="https://stuk.github.io/jszip" target="_blank" rel="noreferrer noopener">JSZip</a>
 	</p>
