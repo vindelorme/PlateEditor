@@ -217,7 +217,7 @@ class RespTable {
 	}
 	setValue(v) { //Set the selection of the table to the given array of index
 		this.Array.forEach(function(a, i) {
-			var found = v.includes(i); //Will return true if the index was found
+			let found = v.includes(i); //Will return true if the index was found
 			if(found) {a.Selected = true}
 			else {a.Selected = false}
 		});

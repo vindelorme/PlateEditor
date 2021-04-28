@@ -48,8 +48,10 @@ class Section {
 		return name.replace(/_{2,}/g, '_'); //Eliminate consecutive _
 	}
 	static fileHeader(s) { //Prepare a header for the file to be exported, that summarizes exactly where these data belongs to
-		let names = [Analyzer.Report.FileName, s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
-		return "Data for Result file: [" + names[0] + "]; Parameter:  [" + names[1] + "]; Table: [" + names[2] + "]\n"; //Merge the names together into a single string
+		//let names = [Analyzer.Report.FileName, s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
+		//return "Data for Result file: [" + names[0] + "]; Parameter:  [" + names[1] + "]; Table: [" + names[2] + "]\n"; //Merge the names together into a single string
+		let names = [s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
+		return "Data for Result file: [" + s.Bloc.File + "]; Parameter:  [" + names[0] + "]; Table: [" + names[1] + "]\n"; //Merge the names together into a single string
 	}
 	//Methods
 	HTML(title) { //Prepare the inner html for a section
@@ -140,16 +142,9 @@ class Section {
 		}
 		let blob = new Blob([save], {type : "text/plain;charset=utf-8"});
 		if(I && I.BlobOnly) {return blob} //If only the blob is required (chaining with other files), exit here by returning the blob
-		let url = URL.createObjectURL(blob);
-		let id = "Form_Save";
 		let fileName = "Results.txt";
 		if(I && I.FileName) {fileName = I.FileName + ".txt"}
-		Form.open({ //Form to let the user download the file
-			ID: id,
-			HTML: "<p>Click <a href=\"" + url + "\" download=\"" + fileName + "\">here</a> to download and save the tab-delimited text file containing your data</p>",
-			Title: "Export data",
-			Buttons: [{Label: "Close", Click: function() {URL.revokeObjectURL(url); Form.close(id)}}], //Revoke the URL has it is no longer useful
-		});
+		Form.download(save, {FileName: fileName});
 		return this;
 	}
 	printable() { //Open a new window containing only the table and allowing easy copy-pasting / printing

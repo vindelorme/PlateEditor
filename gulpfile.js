@@ -17,7 +17,6 @@ gulp.task("clean", function(cb) {
 	.pipe(clean());
 });
 gulp.task("build", function(cb) {
-	//let apps = ["editor", "plotter", "helper", "grapher", "shared", "analyzer", "ui"];
 	let apps = ["editor", "shared", "analyzer", "ui"];
 	apps.forEach(function(a) { //Loop the array of apps to build
 		//Build the js files
@@ -38,7 +37,7 @@ gulp.task("build", function(cb) {
 	cb();
 });
 gulp.task("release", function(cb) {
-	let folders = ["dependencies", "dist", "images"];
+	let folders = ["dependencies", "dist", "images", "examples"];
 	let stream = mergeStream();
 	folders.forEach(function(f) {
 		stream.add(

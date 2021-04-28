@@ -105,13 +105,11 @@ class Analyzer {
 			else { //Push the numeric values only and exclude the text
 				numericOnly.push(v);
 				stats.Total += v;
-				//stats.N++;
 			} 
 			html += "<tr>" + this.cellForValue(v, {Type: type, Class: val.Class}) + "</tr>"; 
 		}, this);
 		if(l == 0) {html += "<tr><td>" + this.noData() + "</td></tr>"} //The array was empty
 		html += "</table></div></td>";
-		//let n = stats.N;
 		let n = numericOnly.length;
 		if(n > 0) { //At least one numeric value was found
 			let avg = stats.Total / n;
@@ -125,7 +123,6 @@ class Analyzer {
 				stats.SD = SD;
 				stats.CV = 100 * SD / avg;
 			}
-			//if(n != l) {stats.N = n + " (out of " + l + ")"} //Inform that not all values were used
 		}
 		stats.N = l;
 		if(n != l) {stats.N = n + " (" + l + ")"} //Inform that not all values were used
@@ -164,7 +161,7 @@ class Analyzer {
 			if(column.Visible) {html += Analyzer.cellForValue(stats[c].CV, {Type: "#"})}
 		});
 		html += "</tr>";
-		html += "<tr title=\"Count of numerical values for this column. If textual values are present, the total count of available values is indicated below\"><td>N</td>";
+		html += "<tr title=\"Count of valid numerical values for this column. If textual, invalid or empty values are present, the total count of values is indicated in parenthesis\"><td>N</td>";
 		o.forEach(function(column, c) {
 			if(column.Visible) {html += "<td>" + stats[c].N + "</td>"} //There is no need to adjust decimals here as N is an integer
 		});

@@ -5,13 +5,11 @@ class Report_Grouped extends Report {
 	constructor(o) {
 		super(o);
 		let source = window.opener.Grouped;
-		this.Result = source.Result; //Recover incoming data
-		this.Params = source.Result.Parameters;
 		this.Areas = source.Areas.map(function(a) {a.Available = true; a.Values = [{Name: a.Name, Value: a.Name, Tags: a.Tags}]; return a}); //Mark all items as available
 		this.Ranges = source.Ranges.map(function(r) {r.Available = true; return r});
 		this.Concentrations = source.Conc.map(function(c) {c.Available = true; return c});
+		this.ResolvedNames = []; //Array to collect the names for the definition plates currently selected 
 		this.Menu.addTabs([ //Prepare the menu
-			{Label: "Plates", SetActive: true, Content: {Type: "HTML", Value: "<fieldset><legend>Result</legend><div id=\"Plate_Select\"></div><div id=\"Plate_All\"></div></fieldset><fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>"} },
 			{Label: "Data selected", SetActive: true,
 				Content: {
 					Type: "HTML",
@@ -22,17 +20,16 @@ class Report_Grouped extends Report {
 				}
 			},
 		]);
-		this.UI = { //UI to interact with the data
-			Plate: LinkCtrl.new("Select", {ID: "Plate_Select", Default: 0, List: this.Result.PlatesID, Label: "Plate", Title: "The result plate for which values will be displayed", Change: this.compute.bind(this)}),
-			Rows: new RespTable({ID: "SelectedRows", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(I) {if(I === undefined || I.Action != "Select") {this.compute()}}.bind(this)}),
-			Cols: new RespTable({ID: "SelectedCols", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(I) {if(I === undefined || I.Action != "Select") {this.compute()}}.bind(this)}),
-			DataView: LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Avg, SD, N", "Average", "Column", "Row"], Preserve: true, Change: this.compute.bind(this),
-				Title: "Indicates how multiple values are displayed in the grouped table: arrayed in a single column or in consecutive rows; show only the average; show the average, standard deviation and number of samples"
-			}),
-		}
-		if(this.Result.PlatesID.length > 1) {this.UI.Plate.NavBar = true; this.UI.Plate.Lookup = {Active: false}} //Upgrade the select with navBar and LookUp if more than 10 plates
-		//let b = LinkCtrl.button({Label: "Compute all", Title: "Click here to compute the stat summaries for all plates", Click: function() {}.bind(this)});
-		//GetId("Plate_All").append(b);
+		GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
+		this.UI.Rows = new RespTable({ID: "SelectedRows", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(I) {
+			if(I === undefined || I.Action != "Select") {this.compute()}
+		}.bind(this)});
+		this.UI.Cols = new RespTable({ID: "SelectedCols", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(I) {
+			if(I === undefined || I.Action != "Select") {this.compute()}
+		}.bind(this)});
+		this.UI.DataView = LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Avg, SD, N", "Average", "Column", "Row"], Preserve: true, Change: this.compute.bind(this),
+			Title: "Indicates how multiple values are displayed in the grouped table: arrayed in a single column or in consecutive rows; show only the average; show the average, standard deviation and number of samples"
+		});
 		let buttons = LinkCtrl.buttonBar([
 			{Label: "Add Rows", Title: "Click here to add rows of data to the summary table", Click: function() {this.addData("Rows")}.bind(this)},
 			{Label: "Add Columns", Title: "Click here to add columns of data to the summary table", Click: function() {this.addData("Cols")}.bind(this)},
@@ -46,20 +43,32 @@ class Report_Grouped extends Report {
 						this.ResolvedNames[i] = names; //Update the name property for this definition
 						this.updateNames(d.Area, i); //Update the diplayed names
 					}.bind(this));
+					if(v !== undefined) { //If the change is triggered by a pair setter, v will be undefined and there is no need to check the status. But if the select is changed manually by the user, need to check
+						this.pairStatus(this.UI.Plate.getValue(), {Check: true}); //Update the pair status
+					}
 				}.bind(this)});
-				if(sel.List.length > 10) {sel.NavBar = true; sel.Lookup = {Active: false} }
+				if(sel.List.length > 1) {sel.NavBar = true; sel.Lookup = {Active: false} }
 				if(i > 0) {sel.Preserve = true}
 				this.UI["Definition_" + i] = sel;
 			}
 		}, this);
-		this.resolveAllNames().then(function() { //Start by recovering all definitions names
-			this.Ready = true;
-			GetId("Report_Ready").remove();
-		}.bind(this));
 		GetId("Output").innerHTML = "<p class=\"Note\">Add Rows and Columns of data to start</p>"; //Welcome message
 		return this;
 	}
 	//Methods
+	do() {
+		if(this.Ready) { //Names were already resolved, proceed
+			this.compute();
+		}
+		else { //First resolve the names
+			this.resolveAllNames().then(function() { //Start by recovering all definitions names
+				this.Ready = true;
+				GetId("Report_Ready").remove();
+				this.compute(); //Compute
+			}.bind(this));
+		}
+		return this;
+	}
 	addData(entry) { //Addition of rows/cols into the data tables
 		let id = "Form_AddData";
 		let available = id + "_Available";
@@ -178,7 +187,14 @@ class Report_Grouped extends Report {
 	}
 	resolveNames(d, defIndex) { //Resolve the names for the definition passed
 		let a = d.Area;
-		let factor = Math.ceil(a.Tagged / a.Replicates);
+		//
+		//
+		//
+		//let factor = Math.ceil(a.Tagged / a.Replicates);
+		let factor = a.MaxRange;
+		//
+		//
+		//
 		let args = {
 			Plate: this.UI["Definition_" + defIndex].Selected, //Name of the plate where to look the data
 			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available
@@ -237,9 +253,10 @@ class Report_Grouped extends Report {
 	}
 	getValues(selectedPlate) { //Retrieve all the parameter values for for the selected plate, as an 2D array the size of the plate
 		let o = {Items: 0, Values: [], Params: []} //Output object containing the data for one plate
+		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
 			if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
-				o.Params.push({Index: i, Name: p.Name});
+				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex});
 				o.Values.push([]); //Create empty arrays to receive the values for each parameter
 			}
 		}, this);
@@ -261,7 +278,7 @@ class Report_Grouped extends Report {
 	waitMessage(params) { //Display a waiting message
 		let msg = "<span class=\"warning\">Parsing values, please wait...</span>";
 		params.forEach(function(param, i) { //Process all parameters
-			let bloc = Report.getBloc(this, param.Name);
+			let bloc = Report.getBloc(this, Report.blocName(param));
 			bloc.Sections.forEach(function(s) {
 				if(s.Summary === undefined) {s.replaceContent(msg)}
 			});
@@ -275,7 +292,7 @@ class Report_Grouped extends Report {
 		let aggregation = this.UI.DataView.Selected;
 		this.getValues(plate).then(function(data) {
 			data.Params.forEach(function(p, i) {
-				let section = Report.getBloc(this, p.Name).getSection("Values", {TableType: "Grouped"});
+				let section = Report.getBloc(this, Report.blocName(p)).getSection("Values", {TableType: "Grouped"});
 				let table = this.valueTable(rows, cols, data, i, aggregation);
 				section.replaceContent("<p class=\"Title\">Data for plate: " + plate + "</p>" + table.HTML);
 			}, this);
@@ -285,57 +302,4 @@ class Report_Grouped extends Report {
 	valueTable(rows, cols, data, paramIndex, aggregation) { //The table that will hold the data
 		return Analyzer.groupedTable(rows, cols, data.Values[paramIndex], aggregation);
 	}
-	/*
-	computeStats(I) {
-		let plate = this.UI.Plate.Selected;
-		this.getValues(plate).then(function(data) { //Collect values for this plate
-			let stats = this.processValues(data, plate); //Display the individual values and compute the stats
-			if(this.Result.PlatesID.length > 1) { //If there are more than one plate attached to this result, then also create/update the Plate summary table
-				this.plateSummary(data, plate, stats);
-			}
-			if(I && I.UpdateNames) {this.updateNames()}
-		}.bind(this));
-		return this;
-	}
-	processValues(data, plate) { //Process incoming data, as an array of object containing the values for each parameter and areas
-		let stats = [];
-		data.Params.forEach(function(param, i) { //Process all parameters
-			let section = Report.getBloc(this, param.Name).getSection("Values", {TableType: "Inner"});
-			let table = this.valueTable(data, i);
-			section.replaceContent("<p class=\"Title\">Data for plate: " + plate + "</p>" + table.HTML);
-			stats.push(table.Stats);
-		}, this);
-		return stats;
-	}
-	valueTable(data, valueIndex) { //Create the table holding values for all area, using values for the parameter at the index given
-		let o = []; //The array that will be used by the analyzer to create the table
-		data.Areas.forEach(function(a) { //Process all the areas
-			o.push({Label: a.Name, Values: a.Values[valueIndex], Visible: a.Selected});
-		});
-		return Analyzer.objectToTable(o);
-	}
-	plateSummary(data, plate, stats) { //Update the plate summary by adding a row for the plate in each relevant table
-		let tables = this.plateSummaryTables(data);
-		data.Params.forEach(function(param, i) { //Process all parameters
-			let section = Report.getBloc(this, param.Name).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Average", "SD", "CV (%)", "N"], TableType: "Inner"});
-			if(stats[i]) {
-				tables.forEach(function(t, j) { //Loop through the areas
-					let s = stats[i][j];
-					section.updateTable(j, "Plate", plate, [plate, s.Avg, s.SD, s.CV, s.N], {Visible: t.Visible});
-				});
-			}
-			else {section.hideAllTables()}
-		}, this);
-	}
-	plateSummaryTables(data) {
-		let tables = [];
-		data.Areas.forEach(function(a) {
-			tables.push({Title: a.Name, Visible: a.Selected});
-		});
-		return tables;
-	}
-	statsAllPlates() {
-		
-	}
-	*/
 }

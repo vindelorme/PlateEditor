@@ -10,6 +10,7 @@ class Definition {
 		this.Mapping = data.Mapping;
 		this.Mapper = Mapper.new(data.Mapping); //Create the mapper object
 		this.PlateIndex = LinkCtrl.new("Select", {ID: Definition.anchors("PlateIndex"), Default: 0, List: [1], NavBar: true, Lookup: true, Label: "Plate", Title: "The plate that will be used for the display of definitions", Change: function(v) {this.previewPlate(v)}.bind(this)});
+		this.PlatesID == undefined; //Array of ID for the plates within this definition
 		return this;
 	}
 	//Static Methods
@@ -86,14 +87,14 @@ class Definition {
 						Chain: true,
 						OnClose: function(data) {mapping(a, data, true)} //Last argument specifies here that a "back to mapping" option should be available
 					});
-				}},
+				}, Title: "Select or change the definition file for the selected Range"},
 				{Label: "Edit Mapping", Icon: {Type: "Edit", Space: true}, Click: function() {
 					var sel = rangeTable.Selected;
 					if(sel.length == 0) {alert("No range selected!"); return}
 					var a = sel[0];
 					if(a.Definition === undefined) {alert("No file selected!"); return}
 					mapping(a, [a.Definition.Input]);
-				}},
+				}, Title: "Edit the column mapping for the definition file attached to the selected Range"},
 				{Label: "Reset", Icon: {Type: "Reset", Space: true}, Click: function() {
 					var sel = rangeTable.Selected;
 					if(sel.length == 0) {alert("No range selected!"); return}
@@ -101,8 +102,11 @@ class Definition {
 					a.removeDefinition();
 					rangeTable.update();
 					doPreview(a);
-				}},
-				{Label: "Done", Icon: {Type: "Ok", Space: true, Color: "Green"}, Click: function() {Form.close(id)}},
+				}, Title: "Remove the definition for the selected Range"},
+				{Label: "Done", Icon: {Type: "Ok", Space: true, Color: "Green"}, Click: function() {
+					Pairing.updateAll(Editor.ResultManager.Anchors.Pairing); //Update pairing info for all results
+					Form.close(id);
+				}, Title: "Close this form"},
 			],
 			onInit: function() { //Initialize the respTable on open
 				rangeTable.init();
@@ -158,7 +162,10 @@ class Definition {
 				{Label: "Printable version", Click: function() {
 					Reporter.printable(GetId(preview).innerHTML);
 				}, Title: "Open the map in a new window to allow easy printing or copy/pasting to other applications"},
-				{Label: "Done", Icon: {Type: "Ok", Space: true, Color: "Green"}, Click: function() {Form.close(id)}},
+				{Label: "Done", Icon: {Type: "Ok", Space: true, Color: "Green"}, Click: function() {
+					Pairing.update(Editor.ResultManager.Anchors.Pairing); //Update pairing info for result displayed
+					Form.close(id);
+				}, Title: "Close this form"},
 			],
 			onInit: function() { //Initialize the respTable on open
 				rangeTable.init();
@@ -173,7 +180,8 @@ class Definition {
 	}
 	static getAsPlate(d) { //For the definition object passed, return an array the size of the plate with definitions resolved for each well. Also return an array indicating tagged wells for the area
 		let a = d.Area;
-		let factor = Math.ceil(a.Tagged / a.Replicates);
+		//let factor = Math.ceil(a.Tagged / a.Replicates);
+		let factor = a.MaxRange;
 		let args = {
 			Plate: d.PlateIndex.Selected, //Name of the plate where to look the data
 			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available

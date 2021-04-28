@@ -8,23 +8,16 @@ class Report_Controls extends Report {
 		[source.Controls.N, source.Controls.P].forEach(function(control) { //Mark all controls as selected
 			control.forEach(function(c) {c.Selected = true});
 		});
-		this.Result = source.Result;
-		this.Params = source.Result.Parameters;
 		let controlHTML = "";
 		controlHTML += "<fieldset style=\"margin-bottom: 10px\"><legend>Positive</legend><div id=\"Ctrl_Pos\"></div></fieldset>";
 		controlHTML += "<fieldset style=\"margin-bottom: 10px\"><legend>Negative</legend><div id=\"Ctrl_Neg\"></div></fieldset>";
 		this.Menu.addTabs([
-			{Label: "Plates", SetActive: true, Content: {Type: "HTML", Value: "<fieldset><legend>Result</legend><div id=\"Plate_Select\"></div><div id=\"Plate_All\"></div></fieldset>"} },
 			{Label: "Controls", SetActive: true, Content: {Type: "HTML", Value: controlHTML} },
 		]);
-		this.UI = {
-			P: new RespTable({ID: "Ctrl_Pos", Fields: ["Name"], RowNumbers: true, Multiple: true, NoControls: true, Array: source.Controls.P, onSelect: this.computeZFactor.bind(this)}),
-			N: new RespTable({ID: "Ctrl_Neg", Fields: ["Name"], RowNumbers: true, Multiple: true, NoControls: true, Array: source.Controls.N, onSelect: this.computeZFactor.bind(this)}),
-			Plate: LinkCtrl.new("Select", {ID: "Plate_Select", Default: 0, List: this.Result.PlatesID, Label: "Plate", Title: "The result plate for which values will be displayed", Change: this.computeZFactor.bind(this)}),
-		}
-		if(this.Result.PlatesID.length > 1) {this.UI.Plate.NavBar = true; this.UI.Plate.Lookup = {Active: false}}
+		this.UI.P = new RespTable({ID: "Ctrl_Pos", Fields: ["Name"], RowNumbers: true, Multiple: true, NoControls: true, Array: source.Controls.P, onSelect: this.computeZFactor.bind(this)});
+		this.UI.N = new RespTable({ID: "Ctrl_Neg", Fields: ["Name"], RowNumbers: true, Multiple: true, NoControls: true, Array: source.Controls.N, onSelect: this.computeZFactor.bind(this)})
 		let b = LinkCtrl.button({Label: "Compute all", Title: "Click here to compute the Z-factor/Window summaries for all plates", Click: function() {this.zScoreAllPlates()}.bind(this)});
-		GetId("Plate_All").append(b);
+		GetId(this.Anchors.PlateDoAll).append(b);
 		let b_pos = LinkCtrl.buttonBar([
 			{Label: "Unselect all", Title: "Click here to unselect all positive controls", Click: function() {this.UI.P.setValue([]); this.computeZFactor()}.bind(this)},
 			{Label: "Select all", Title: "Click here to select all positive controls", Click: function() {this.UI.P.selectAll(); this.computeZFactor()}.bind(this)},
@@ -35,23 +28,29 @@ class Report_Controls extends Report {
 			{Label: "Select all", Title: "Click here to select all negative controls", Click: function() {this.UI.N.selectAll(); this.computeZFactor()}.bind(this)},
 		]);
 		GetId("Ctrl_Neg").parentElement.prepend(b_neg);
-		this.computeZFactor();
 		return this;
 	}
+	//Static Methods
 	static combinationName(n, p) { //For the combination of negative and positive control object given, return the combination name as a string
 		return "[" + p.Name + "] vs [" + n.Name + "]";
 	}
 	//Methods
+	do() {
+		this.computeZFactor();
+		return this;
+	}
 	getControlValues(selectedPlate) { //Retrieve the values for all controls and parameters, for the selected plate
 		[this.UI.N.Array, this.UI.P.Array].forEach(function(control) { //For each of the negative and positive control arrays
 			control.forEach(function(c) { //For each control
 				c.Values = []; //Reset value arrays to accept new values
 			});
 		});
+		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
 		let o = {Items: 0, Neg: this.UI.N.Array, Pos: this.UI.P.Array, Params: []} //Output object containing the data for one plate
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
 			if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
-				o.Params.push({Index: i, Name: p.Name});
+				//o.Params.push({Index: i, Name: resultIndex + ". " + p.Name}); //Ensure unicity of parameter names, even accross multiple results
+				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex}); //Ensure unicity of parameter names, even accross multiple results
 				[o.Neg, o.Pos].forEach(function(control) { //For each of the negative and positive control arrays
 					control.forEach(function(c) { //For each control
 						c.Values.push([]); //Create empty arrays to receive the values
@@ -67,7 +66,9 @@ class Report_Controls extends Report {
 					control.forEach(function(c) { //Check for each control
 						if(c.Tags.includes(wellIndex)) { //This control is tagged on this well
 							output.Params.forEach(function(param, i) { //Log the values for all parameters
-								c.Values[i].push(Number(row[param.Index]));
+								let v = row[param.Index];
+								if(v == "") {c.Values[i].push("")} //Number("") returns 0
+								else {c.Values[i].push(Number(v))}
 							});
 						}
 					});
@@ -83,7 +84,7 @@ class Report_Controls extends Report {
 	waitMessage(params) { //Display a waiting message
 		let msg = "<span class=\"warning\">Parsing values, please wait...</span>";
 		params.forEach(function(param, i) { //Process all parameters
-			let bloc = Report.getBloc(this, param.Name);
+			let bloc = Report.getBloc(this, Report.blocName(param));
 			bloc.Sections.forEach(function(s) {
 				if(s.Summary === undefined) {s.replaceContent(msg)}
 			});
@@ -105,7 +106,7 @@ class Report_Controls extends Report {
 	processValues(data, plate) { //Process incoming data, as an array of object containing the values for each parameter and controls
 		let stats = [];
 		data.Params.forEach(function(param, i) { //Process all parameters
-			let section = Report.getBloc(this, param.Name).getSection("Values", {TableType: "Inner"});
+			let section = Report.getBloc(this, Report.blocName(param)).getSection("Values", {TableType: "Inner"});
 			let table = this.valueTable(data, i);
 			section.replaceContent("<p class=\"Title\">Data for plate: " + plate + "</p>" + table.HTML);
 			stats.push(table.Stats);
@@ -125,7 +126,7 @@ class Report_Controls extends Report {
 	processZscore(stats, data, plate) { //Process the stats for each controls in order to compute the z-factors
 		let scores = [];
 		data.Params.forEach(function(param, i) { //Process all parameters
-			let section = Report.getBloc(this, param.Name).getSection("Z-factors");
+			let section = Report.getBloc(this, Report.blocName(param)).getSection("Z-factors");
 			let table = this.zScoreTable(stats[i], data);
 			section.replaceContent("<p class=\"Title\">Data for plate: " + plate + "</p>" + table.HTML);
 			scores.push(table.Score);
@@ -189,7 +190,7 @@ class Report_Controls extends Report {
 	plateSummary(data, plate, scores) { //Update the plate summary by adding a row for the plate in each relevant table
 		let tables = this.plateSummaryTables(data);
 		data.Params.forEach(function(param, i) { //Process all parameters
-			let section = Report.getBloc(this, param.Name).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Z'", "Window"], TableType: "Inner"});
+			let section = Report.getBloc(this, Report.blocName(param)).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Z'", "Window"], TableType: "Inner"});
 			if(scores[i]) {
 				let Zscores = scores[i][0].Scores;
 				let Wscores = scores[i][1].Scores;
@@ -226,6 +227,7 @@ class Report_Controls extends Report {
 				let scores = this.processZscore(stats, data, currentPlate); //Compute and display the z-score
 				this.plateSummary(data, currentPlate, scores);
 				this.UI.Plate.setValue(running); //Ensures that the control is set at the same value as the last computed plate
+				this.pairStatus(running); //Also adjust the pairing info
 			}
 			current = plateCounter.next();
 			running++;

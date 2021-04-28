@@ -142,7 +142,7 @@ class Parameter {
 			plate.highlight();
 			if(timeOut) {clearTimeout(timeOut)}
 			plate.infoPopup(); //hide the popup
-		}.bind(this));
+		}.bind(this), {passive: true});
 		return this;
 	}
 	highlight(array) { //Draw the highlight image at the coordinates provided. Each element in array is an object specifying the image to draw and the coordinates x and y

@@ -22,11 +22,13 @@ class Reporter {
 	static header(I) { //Prepare the header for the html report page
 		let title = (I.Title || "Report");
 		let html = this.htmlHeader(I.Method);
-		html +="\t<script type=\"text/javascript\">window.onload = function() {Analyzer.init({Method: \"" + I.Method + "\", Title: \"" + title + "\", FileName: \"" + I.FileName + "\"})}</script>\n"; //Script to init the Analyzer on loading the page
+		//html +="\t<script type=\"text/javascript\">window.onload = function() {Analyzer.init({Method: \"" + I.Method + "\", Title: \"" + title + "\", FileName: \"" + I.FileName + "\"})}</script>\n"; //Script to init the Analyzer on loading the page
+		html +="\t<script type=\"text/javascript\">window.onload = function() {Analyzer.init({Method: \"" + I.Method + "\", Title: \"" + title + "\"})}</script>\n"; //Script to init the Analyzer on loading the page
 		html += "</head>\n";
 		html += "<body style=\"font-family: arial; font-size: 16px\">\n";
 		html += "<div id=\"Header\">\n"; //Header
-		html += "\t<p><b>" + title + "<br>" + I.FileName + "</b></p>\n";
+		//html += "\t<p><b>" + title + "<br>" + I.FileName + "</b></p>\n";
+		html += "\t<p><b>" + title + "</b></p>\n";
 		html += "</div>\n";
 		html += "<div id=\"Main\">\n";  //Opening of the main report div
 		return html;
@@ -117,19 +119,19 @@ class Reporter {
 		});
 		return output;
 	}
-	static zFactor(controls, result) { //Compute z-score for the result file passed, using the controls provided
-		window.zFactor = {Controls: this.combination(controls, {Conc: true, Tags: true}), Result: result}
-		this.openReport("", {Title: "Control Report", FileName: result.Name, Method: "zFactor"});
+	static zFactor(controls/*, results*/) { //Compute z-score for the result file passed, using the controls provided
+		window.zFactor = {Controls: this.combination(controls, {Conc: true, Tags: true})/*, Results: results*/}
+		this.openReport("", {Title: "Control Report", /*FileName: result.Name,*/ Method: "zFactor"});
 	}
-	static aggregate(areas, result) { //Compute stats for the result file passed, using the areas provided
+	static aggregate(areas/*, results*/) { //Compute stats for the result file passed, using the areas provided
 		areas.R.forEach(function(range) {
 			areas.A = areas.A.concat(range.Values); //Concat all individual rangeIndex to the areas
 		});
-		window.Aggregate = {Combinations: this.combination({A: areas.A}, {Conc: true, Tags: true}), Result: result, Ranges: areas.R}
-		this.openReport("", {Title: "Column Report", FileName: result.Name, Method: "Aggregate"});
+		window.Aggregate = {Combinations: this.combination({A: areas.A}, {Conc: true, Tags: true})/*, Results: results*/, Ranges: areas.R}
+		this.openReport("", {Title: "Column Report", /*FileName: result.Name,*/ Method: "Aggregate"});
 	}
-	static grouped(areas, conc, result) { //Compute stats for the result file passed, using the areas provided and organizing data as two-entry tables
-		window.Grouped = {Areas: areas.A, Conc: conc, Result: result, Ranges: areas.R, Definitions: areas.D}
-		this.openReport("", {Title: "Grouped Report", FileName: result.Name, Method: "Grouped"});
+	static grouped(areas, conc/*, results*/) { //Compute stats for the result file passed, using the areas provided and organizing data as two-entry tables
+		window.Grouped = {Areas: areas.A, Conc: conc/*, Results: results*/, Ranges: areas.R, Definitions: areas.D}
+		this.openReport("", {Title: "Grouped Report", /*FileName: result.Name,*/ Method: "Grouped"});
 	}
 }

@@ -86,7 +86,9 @@ class Result {
 				],
 			});
 			result.getValues(plateIndex, paramIndex).then(function(data) { //Fetch the data, then build the html table
-				if(p.Numeric) {data.map(function(v) {return Number(v)})} //Convert text into numbers
+				if(p.Numeric) { //Convert text into numbers
+					data = Result.cleanValues(data);
+				}
 				let o = Parameter.getMinMax(p, data, Editor.ResultManager.extremumObject());
 				let grad = Editor.ResultManager.gradColors();
 				let r = Editor.Plate.Rows;
@@ -114,6 +116,13 @@ class Result {
 		}
 		return {Label: "html", Title: "Click here to view this heatmap as an html array", Click: action}
 	}
+	static cleanValues(output) { //Clean the array of values recovered from the Mapper, to ensure the conversion to number and correct handling of empty strings
+		return output.map(function(v) {
+			//if(v == "" || v == "Infinity") {return undefined}
+			//else {return Number(v)}
+			return Mapper.cleanValue(v);
+		});
+	}
 	//Methods
 	draw(plateIndex, GradColors, tab, I) { //Draw heatmap for this result and the plateIndex selected
 		let plate = Editor.Plate;
@@ -123,7 +132,7 @@ class Result {
 				p.grid(plate);
 				this.getValues(plateIndex, i).then(function(output) { //Collect the values for this parameter, then build the heatmap
 					if(p.Numeric) { //Process the array if this parameter has been selected as numerical
-						output.map(function(v) {return Number(v)}); //Convert text into numbers
+						output = Result.cleanValues(output);
 						let o = Parameter.getMinMax(p, output, I);
 						output.forEach(function(v, i) { //Process the array
 							p.heatmap(v, i, plate, GradColors, o.Min, o.Max);

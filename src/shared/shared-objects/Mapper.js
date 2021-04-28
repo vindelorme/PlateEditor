@@ -278,10 +278,15 @@ class Mapper {
 		}
 		return o.Mapper.scan(o, I, output);
 	}
+	static cleanValue(v) { //Clean the value recovered from the Mapper, to ensure smooth conversion to a number and correct handling of empty/crashing strings
+		if(v == "" || v == "Infinity") {return undefined}
+		else {return Number(v)}
+	}
 	static scanMinMax(o, row) { //Evaluate Min/Max and update the properties for the object passed
 		o.Parameters.forEach(function(p, i) { //For each numerical parameter, update the global min/max values
 			if(p.Numeric) {
-				let value = Number(row[i]);
+				//let value = Number(row[i]);
+				let value = Mapper.cleanValue(row[i]);
 				if(value > p.GlobalMax) {p.GlobalMax = value}
 				if(value < p.GlobalMin) {p.GlobalMin = value}
 			}

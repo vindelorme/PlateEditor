@@ -27,9 +27,12 @@ class InputParser_XLS extends InputParser {
 			reader.onload = function(e) { //After opening the file, process it
 				let ab = e.target.result; //ArrayBuffer
 				let dv = new DataView(e.target.result);
-				InputParser_XLS.getOffsets(parser, dv); //Metadata
-				let cursor = InputParser_XLS.getSheets(parser, ab, dv); //Sheets informations
-				if(parser.BIFFversion == 6) {InputParser_XLS.getSharedStrings(parser, ab, dv, cursor)} //Sharedstring are only present for BIFF8
+				try {
+					InputParser_XLS.getOffsets(parser, dv) //Metadata
+					let cursor = InputParser_XLS.getSheets(parser, ab, dv); //Sheets informations
+					if(parser.BIFFversion == 6) {InputParser_XLS.getSharedStrings(parser, ab, dv, cursor)} //Sharedstring are only present for BIFF8
+				}
+				catch(e) {reject(e); return}
 				resolve();
 			}
 			reader.readAsArrayBuffer(parser.RawData); //Start the file reading process
@@ -115,27 +118,53 @@ class InputParser_XLS extends InputParser {
 		}
 	}
 	static buildSheetAB(ab, sheet, SectorSize, wbOffset, wbSector, BIFFversion) { //For older versions of BIFF, there seems to be cases where the FAT are not in a direct sequence and the arraybuffer needs reshuffling
-		if(BIFFversion == 6) {return ab.slice(sheet.Offset, sheet.Offset + sheet.Length)} //Only BIFF for which there is no INDEX / DBCELL needs reshuffling
+		if(BIFFversion == 6) {return ab.slice(sheet.Offset, sheet.Offset + sheet.Length)} //BIFF for which there is no INDEX / DBCELL needs reshuffling
 		let dv = new DataView(ab);
-		let FAT = (dv.getUint32(76, true) + 1) * SectorSize; //Offset location of the first compound File FAT array
+		let FAT = InputParser_XLS.getFatArray(dv, SectorSize); //Get the array of FAT, storing how the sectors are chained
 		let ordered = new Uint8Array(ab.byteLength); //A typed array containing the arraybuffer data in the right order
+		let maxIndex = SectorSize / 4; //Limited number of sectors per FAT, depending on the sector size (they are all stored over 4 bytes)
 		let i = 0;
-		let next = dv.getInt32(FAT + wbSector * 4, true); //Index of the next sector in chain after the wbSector. Signed int is used to quickly recognize Free Sector (FFFF FFFF; -1) that mark the end of the track
+		let j = Math.floor(wbSector / maxIndex); //j is the index within the FAT array; Which index to use is calculated from the index
+		let next = dv.getInt32(FAT[j] + wbSector * 4, true); //Index of the next sector in chain after the wbSector. Signed int is used to quickly recognize Free Sector (FFFF FFFF; -1) that mark the end of the track
 		let start = wbOffset; //Offset for the start of the workbook
 		let temp = new Uint8Array(ab.slice(start, start + SectorSize)); //First piece of the buffer
 		ordered.set(temp); //Set the first piece at the 0 position
 		//console.log(FAT, next, start, temp);
-		while(next != -1) { //Loop until the end of the FAT sectors
-			//console.log(next, i);
+		while(next > -1) { //Loop until the end of the FAT sectors (EOC or FS)
+			//console.log(next, i, j);
 			start = (next + 1) * SectorSize;
 			temp = new Uint8Array(ab.slice(start, start + SectorSize)); //Next piece of the buffer
 			ordered.set(temp, (i + 1) * SectorSize);
-			next = dv.getInt32(FAT + next * 4, true);
 			i++;
+			j = Math.floor(next / maxIndex); //Update the FAT array index to use to find this sector index
+			next = dv.getInt32(FAT[j] + (next - (j * maxIndex)) * 4, true); //Need to offset next to get the correct byteOffset location in the FAT array index
 		}
 		//console.log(ordered);
 		start = sheet.Offset - wbOffset; //Since the buffer is reshuffled and starts directly with the workbook sector, the wbOffset should be removed from the sheet offset to get to the right position
 		return ordered.buffer.slice(start, start + sheet.Length);
+	}
+	static getFatArray(dv, SectorSize) { //Get the array of FAT. Each element of FAT is a sector storing the next sector in chain for a given sector index
+		let FATnb = dv.getUint32(44, true); //Number of expected FAT sectors
+		let FAT = []; //Array of FAT, will be used to store their offset
+		let i = 76; //From this location, gather the FAT sectors
+		let sector = dv.getInt32(76, true); //We use the signed int to quickly recognize FS (FFFF FFFF; -1) value that mark the end of the track
+		while(sector != -1 && i < 512) { //Gather the FAT sectors from the header
+			FAT.push((sector + 1) * SectorSize);
+			i += 4;
+			sector = dv.getInt32(i, true); //Refresh the sector
+		}
+		if(dv.getUint32(72, true) > 0) { //If additional DIFAT are required to locate all the FAT, traverse them the same way
+			let n = 109; //The number of FAT already counted from the header
+			i = (dv.getUint32(68, true) + 1) * SectorSize; //1st DIFAT location, the others just follow
+			sector = dv.getInt32(i, true); //Here again, we use the signed integer
+			while(sector != -1 && n < FATnb) { //Gather all the remaining FAT sectors
+				FAT.push((sector + 1) * SectorSize);
+				i += 4;
+				n++;
+				sector = dv.getInt32(i, true); //Here again, we use the signed integer
+			}
+		}
+		return FAT;
 	}
 	static parseString(ab, dv, cursor) { //Parse a string record starting at the cursor position given; also returns the offset needed to reach the next record
 		let td = new TextDecoder("windows-1252"); //Sorry for other text encoding, it will be for future updates...
@@ -389,8 +418,9 @@ class InputParser_XLS extends InputParser {
 		}.bind(this), function(error) { //What to do if the reading fail
 			this.Error = true;
 			this.ErrorDetails = error;
+			this.parse(I); //We call the parse again so that the error message and status are reflected in the preview box and the input table
 			if(I && I.Error) {I.Error(error)}
-		});
+		}.bind(this));
 	}
 	stream(f, complete, I) { //Stream the input and send the row to the function provided as argument
 		let w = InputParser_XLS.initWorker(this); //Initialize the webworker

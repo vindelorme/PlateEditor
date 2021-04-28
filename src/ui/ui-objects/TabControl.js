@@ -156,6 +156,15 @@ class TabControl {
 		}
 		return this;
 	}
+	setOpen(array) { //Set open the tabs with their index in the array provided, close the others. Only for tabs with Multiple enabled!
+		if(this.Multiple) {
+			this.Tabs.forEach(function(t, i) {
+				if(array.includes(i)) {t.set("Active")}
+				else {t.set("Resting")}
+			});
+		}
+		return this;
+	}
 	closeAll() { //Close all the tabs
 		this.Tabs.forEach(function(t) {t.set("Resting")});
 		return this;

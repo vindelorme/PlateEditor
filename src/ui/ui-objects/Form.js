@@ -113,4 +113,18 @@ class Form {
 		}
 		else {this.Moving = undefined}
 	}
+	static download(data, I) { //Open a form providing a link allowing download of the data
+		let dataType = "text/plain;charset=utf-8";
+		let fileName = "download.txt";
+		if(I.DataType) {dataType = I.DataType}
+		if(I.FileName) {fileName = I.FileName}
+		let url = URL.createObjectURL(new Blob([data], {type: dataType}));
+		let id = "Form_Download";
+		Form.open({
+			ID: id,
+			HTML: "<p>Click on the link below to download and save your file:</p><p style=\"text-align: center;\"><a href=\"" + url + "\" download=\"" + fileName + "\">" + fileName + "</a></p>",
+			Title: "Download file",
+			Buttons: [{Label: "Close", Click: function() {URL.revokeObjectURL(url); Form.close(id)}}], //Revoke the URL has it is no longer useful
+		});
+	}
 }

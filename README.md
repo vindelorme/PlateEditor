@@ -14,7 +14,7 @@ For users, there is no installation required.
 - If you plan to work offline, download the latest available build here: [Latest build](https://sourceforge.net/projects/plateeditor/), unzip the files in your computer and open 'Editor.html' with your web browser.
 Be sure to retrieve the latest build regularly to ensure you can use all the new functionalities!
 
-For developers, there are dependencies required for the compilation of the source code using Gulp. They are all listed in the _package.lock_ file and can be installed using the _npm_ _install_ command. Here is the step-by-step guide:
+For developers, there are dependencies required for the compilation of the source code using Gulp. They are all listed in the _package.json_ file and can be installed using the _npm_ _install_ command. Here is the step-by-step guide:
 - Make sure [nodeJS](https://nodejs.org) is installed on your computer.
 - Download the source code from GitHub to your computer (or clone the repository using your Git)
 - To install all the required dependencies, open a terminal, navigate to the source folder and run:
@@ -23,7 +23,7 @@ For developers, there are dependencies required for the compilation of the sourc
 npm install
 ```
 
-- To create the minimized and collated js and css files required for the application, run the following command in your ternminal:
+- To create the minimized and collated js and css files required for the application, run the following command in your terminal:
 
 ```
 npm run compil
@@ -36,7 +36,14 @@ The following command can also be used to generate a .zip file containing all th
 npm run release
 ```
 
-Of course, the gulpfile.js file can be updated to modify these commands or create new ones, as desired. In this case, don't forget to edit the package.json file to register the new scripts.
+Of course, the gulpfile.js file can be updated to modify these commands or create new ones, as desired. In this case, don't forget to edit the _package.json_ file to register the new scripts.
+If you have issues running the compil script (stalling without errors), you may need to run the following command:
+
+```
+npm install --global gulp-cli
+```
+
+Also, make sure the terminal you are running is granted administrator privileges. For other issues, contact the author directly or open an issue in this repo.
 
 ## Overview
 

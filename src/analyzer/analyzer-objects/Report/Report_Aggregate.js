@@ -6,27 +6,19 @@ class Report_Aggregate extends Report {
 		super(o);
 		let source = window.opener.Aggregate;
 		source.Combinations.A.forEach(function(c) {c.Selected = true}); //Mark all areas as selected
-		this.Result = source.Result; //Recover incoming data
-		this.Params = source.Result.Parameters;
 		this.Ranges = source.Ranges;
+		this.ResolvedNames = []; //Array to collect the names for the definition plates currently selected 
 		this.Menu.addTabs([ //Prepare the menu
-			{Label: "Plates", SetActive: true, Content: {Type: "HTML", Value: "<fieldset><legend>Result</legend><div id=\"Plate_Select\"></div><div id=\"Plate_All\"></div></fieldset><fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>"} },
 			{Label: "Areas", SetActive: true, Content: {Type: "HTML", Value: "<div style=\"max-height: 500px; overflow: auto\" id=\"Areas\"></div>"} },
 		]);
-		this.UI = { //UI to interact with the data
-			A: new RespTable({ID: "Areas", Fields: ["Name"], RowNumbers: true, NoControls: true, Multiple: true, Array: source.Combinations.A, onSelect: this.computeStats.bind(this)}),
-			Plate: LinkCtrl.new("Select", {ID: "Plate_Select", Default: 0, List: this.Result.PlatesID, Label: "Plate", Title: "The result plate for which values will be displayed", Change: this.computeStats.bind(this)}),
-		}
-		if(this.Result.PlatesID.length > 1) { //Multiple plates
-			this.UI.Plate.NavBar = true; //Upgrade the select with navBar and LookUp if more than 1 plate
-			this.UI.Plate.Lookup = {Active: false};
-			let b = LinkCtrl.button({Label: "Compute all", Title: "Click here to compute the stat summaries for all plates", Click: this.statsAllPlates.bind(this)}); //Also allow multiple plates to be computed
-			GetId("Plate_All").append(b);
-		}
+		this.UI.A = new RespTable({ID: "Areas", Fields: ["Name"], RowNumbers: true, NoControls: true, Multiple: true, Array: source.Combinations.A, onSelect: this.computeStats.bind(this)});
+		let b = LinkCtrl.button({Label: "Compute all", Title: "Click here to compute the stat summaries for all plates", Click: function() {this.this.statsAllPlates()}.bind(this)});
+		GetId(this.Anchors.PlateDoAll).append(b);
 		let bar = LinkCtrl.buttonBar([
 			{Label: "Unselect all", Title: "Click here to unselect all areas", Click: function() {this.UI.A.setValue([]); this.computeStats()}.bind(this)},
 			{Label: "Select all", Title: "Click here to select all areas", Click: function() {this.UI.A.selectAll(); this.computeStats()}.bind(this)},
 		]);
+		GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
 		GetId("Areas").parentElement.prepend(bar);
 		this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
 			let d = r.Definition;
@@ -34,20 +26,32 @@ class Report_Aggregate extends Report {
 				let sel = LinkCtrl.new("Select", {ID: "Definitions_Select", NewLine: true, Index: i, Default: 0, List: d.PlatesID, Label: d.Area.Name, Title: "The plate to use for the resolution of the names for this range", Change: function(v) {
 					this.resolveNames(d, i).then(function(names) { //Fetch the names for the plate selected for this range
 						this.ResolvedNames[i] = names; //Update the name property for this definition
-						this.updateNames(d.Area, i); //Update the diplayed names
+						this.updateNames(d.Area, i); //Update the displayed names
 					}.bind(this));
+					if(v !== undefined) { //If the change is triggered by a pair setter, v will be undefined and there is no need to check the status. But if the select is changed manually by the user, need to check
+						this.pairStatus(this.UI.Plate.getValue(), {Check: true}); //Update the pair status
+					}
 				}.bind(this)});
-				if(sel.List.length > 10) {sel.NavBar = true; sel.Lookup = {Active: false} }
+				if(sel.List.length > 1) {sel.NavBar = true; sel.Lookup = {Active: false} }
 				if(i > 0) {sel.Preserve = true}
 				this.UI["Definition_" + i] = sel;
 			}
 		}, this);
-		this.resolveAllNames().then(function() { //Start by recovering all definitions names
-			this.computeStats(); //Compute the stats
-		}.bind(this));
 		return this;
 	}
 	//Methods
+	do() {
+		if(this.NameResolved) { //Names were already resolved, proceed
+			this.computeStats();
+		}
+		else { //First resolve the names
+			this.resolveAllNames().then(function() { //Start by recovering all definitions names
+				this.NameResolved = true;
+				this.computeStats(); //Compute the stats
+			}.bind(this));
+		}
+		return this;
+	}
 	resolveAllNames() { //Resolve the names for all the definitions available
 		let promises = [];
 		return new Promise(function(resolve) { //Return a promise that will resolve when the parsing is completed
@@ -66,7 +70,14 @@ class Report_Aggregate extends Report {
 	}
 	resolveNames(d, defIndex) { //Resolve the names for the definition passed
 		let a = d.Area;
-		let factor = Math.ceil(a.Tagged / a.Replicates);
+		//
+		//
+		//
+		//let factor = Math.ceil(a.Tagged / a.Replicates);
+		let factor = a.MaxRange;
+		//
+		//
+		//
 		let args = {
 			Plate: this.UI["Definition_" + defIndex].Selected, //Name of the plate where to look the data
 			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available
@@ -127,10 +138,11 @@ class Report_Aggregate extends Report {
 		this.UI.A.Array.forEach(function(a) { //For each area
 			a.Values = []; //Reset value arrays to accept new values
 		});
+		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
 		let o = {Items: 0, Areas: this.UI.A.Array, Params: []} //Output object containing the data for one plate
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
 			if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
-				o.Params.push({Index: i, Name: p.Name});
+				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex});
 				o.Areas.forEach(function(a) { //For each area
 					a.Values.push([]); //Create empty arrays to receive the values
 				});
@@ -158,7 +170,7 @@ class Report_Aggregate extends Report {
 	waitMessage(params) { //Display a waiting message
 		let msg = "<span class=\"warning\">Parsing values, please wait...</span>";
 		params.forEach(function(param, i) { //Process all parameters
-			let bloc = Report.getBloc(this, param.Name);
+			let bloc = Report.getBloc(this, Report.blocName(param));
 			bloc.Sections.forEach(function(s) {
 				if(s.Summary === undefined) {s.replaceContent(msg)}
 			});
@@ -178,7 +190,7 @@ class Report_Aggregate extends Report {
 	processValues(data, plate) { //Process incoming data, as an array of object containing the values for each parameter and areas
 		let stats = [];
 		data.Params.forEach(function(param, i) { //Process all parameters
-			let section = Report.getBloc(this, param.Name).getSection("Values", {TableType: "Inner"});
+			let section = Report.getBloc(this, Report.blocName(param)).getSection("Values", {TableType: "Inner"});
 			let table = this.valueTable(data, i);
 			section.replaceContent("<p class=\"Title\">Data for plate: " + plate + "</p>" + table.HTML);
 			stats.push(table.Stats);
@@ -195,7 +207,7 @@ class Report_Aggregate extends Report {
 	plateSummary(data, plate, stats) { //Update the plate summary by adding a row for the plate in each relevant table
 		let tables = this.plateSummaryTables(data);
 		data.Params.forEach(function(param, i) { //Process all parameters
-			let section = Report.getBloc(this, param.Name).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Average", "SD", "CV (%)", "N"], TableType: "Inner"});
+			let section = Report.getBloc(this, Report.blocName(param)).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Average", "SD", "CV (%)", "N"], TableType: "Inner"});
 			if(stats[i]) {
 				tables.forEach(function(t, j) { //Loop through the areas
 					let s = stats[i][j];

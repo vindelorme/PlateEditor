@@ -81,6 +81,7 @@ class Editor {
 					}
 					else {this.ResultManager.draw(newSelect[0])}
 				}.bind(this),
+				onUpdate: function() {this.Report()}.bind(this),
 			}),
 		}
 		this.Controls = {
@@ -94,7 +95,7 @@ class Editor {
 			},
 			Concentration: {
 				Value: LinkCtrl.new("Number", {ID: this.Anchors.Menu.Conc, Title: "Value for the concentration", Min: 0, Default: 20, Label: "Value", Preserve: true, Chain: {Index: 0}}),
-				Unit: LinkCtrl.new("Select", {ID: this.Anchors.Menu.Conc, Title: "Unit for the concentration", Default: 2, Label: "Unit", ControlLeft: true, Chain: {Index: 1, Last: true}, List: ["M", "mM", "µM", "nM", "pM", "g/L", "g/mL", "mg/mL", "µg/mL", "ng/mL", "pg/mL", "%", "u/mL", "ku/mL", "Mu/mL", "MOI", "×"]}),
+				Unit: LinkCtrl.new("Select", {ID: this.Anchors.Menu.Conc, Title: "Unit for the concentration", Default: 2, Label: "Unit", ControlLeft: true, Chain: {Index: 1, Last: true}, List: ["M", "mM", "µM", "nM", "pM", "g/L", "g/mL", "mg/mL", "µg/mL", "ng/mL", "pg/mL", "%", "u/mL", "ku/mL", "Mu/mL", "MOI", "×", "a.u"]}),
 				Doses: LinkCtrl.new("Number", {ID: this.Anchors.Menu.DRC, Title: "Total number of doses in the dose-response curve", Min: 0, Default: 10, Label: "Doses", Preserve: true, Chain: {Index: 0}}),
 				Rep: LinkCtrl.new("Number", {ID: this.Anchors.Menu.DRC, Title: "How many times the same dose should be replicated side-by-side", Min: 0, Default: 1, Label: "Replicates", ControlLeft: true, Chain: {Index: 1, Last: true}}),
 				Operator: LinkCtrl.new("Select", {ID: this.Anchors.Menu.DRC, Title: "Mathematical operator to use for calculation of the next dose", Chain: {Index: 2, NewLine: true}, Default: 0, Label: "Operator", List:["/", "×", "+", "×10^"]}),
@@ -163,9 +164,9 @@ class Editor {
 			{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
 		]));*/
 		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
-			{Label: "Controls", Title: "Aggregate data for the controls defined in the layout and compute Z-factors", Click: function() {this.zFactor()}.bind(this)},
-			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.aggregate()}.bind(this)},
-			{Label: "Grouped Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as two-entry tables", Click: function() {this.grouped()}.bind(this)},
+			{Label: "Controls", Title: "Aggregate data for the controls defined in the layout and compute Z-factors", Click: function() {this.Report("zFactor")}.bind(this)},
+			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.Report("aggregate")}.bind(this)},
+			{Label: "Grouped Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as two-entry tables", Click: function() {this.Report("grouped")}.bind(this)},
 		]));
 		return this;
 	}
@@ -263,14 +264,7 @@ class Editor {
 		});
 		save += areas + "]]";
 		if(hasArea == false && this.Plate === undefined) {this.Console.log({Message: "Nothing to save", Gravity: "Warning"}); return this} //No area + no plate = nothing to save
-		let url = URL.createObjectURL(new Blob([save], {type : "text/json;charset=utf-8"}));
-		let id = "Form_Save";
-		Form.open({
-			ID: id,
-			HTML: "<p>Click <a href=\"" + url + "\" download=\"Layout.save\">here</a> to download and save your layout file</p>",
-			Title: "Save layout",
-			Buttons: [{Label: "Close", Click: function() {URL.revokeObjectURL(url); Form.close(id)}}], //Revoke the URL has it is no longer useful
-		});
+		Form.download(save, {DataType: "text/json;charset=utf-8", FileName: "Layout.save"});
 		return this;
 	}
 	static load() { //Load a layout from file
@@ -359,7 +353,7 @@ class Editor {
 	}
 	static addArea(C, R) { //Check and create a new area with the options provided
 		let name = C.Name.getValue();
-		if(name.length < 3) {alert("Area name must be at least 3 characters"); return false}
+		if(name.length == 0) {alert("Area name must be at least 1 character"); return false}
 		if(this.Tables.Areas.hasElement("Name", name)) {alert("This name has already been defined, please choose another one"); return false}
 		let color = C.Color.getValue();
 		let type = C.Type.Selected;
@@ -390,7 +384,8 @@ class Editor {
 				if(a.Name != name) { //The name has changed, check unicity
 					if(this.Tables.Areas.hasElement("Name", name)) {alert("This name has already been defined, please choose another one"); return}
 				}
-				if(name.length < 3) {alert("Area name must be at least 3 characters"); return}
+				if(name.length == 0) {alert("Area name must be at least 1 character"); return}
+				Pairing.rename(a.Name, name); //Rename within Pairing object
 				a.Name = name;
 				a.Color = Controls.Color.getValue();
 				if(a.Type == "Range") { //Update values for ranges
@@ -402,6 +397,7 @@ class Editor {
 				}
 				if(this.Plate) {a.update(this.Plate.WellSize, this.Plate.WellMargin)} //Update well display if necessary
 				this.Tables.Areas.update();
+				Pairing.update(this.ResultManager.Anchors.Pairing); //Update pairing info for result displayed
 				Form.close(id);
 			}.bind(this),
 		});
@@ -564,7 +560,6 @@ class Editor {
 	}
 	static pairing() { //Pairing of result and definition plates
 		let definitions = Area.getRanges({HasDefinition: true}); //Ranges with definition
-		//let results = this.Tables.Results.Array.map(function(r) {r["Plate Count"] = r.PlatesID.length; return r}); //Results
 		let results = this.Tables.Results.Array.filter(function(r) { //Get the results. 
 			if(r.Validated) { //Only validated results
 				r["Plate Count"] = r.PlatesID.length; //Create or update the Plate Count property
@@ -572,43 +567,42 @@ class Editor {
 			}
 			else return false;
 		}); 
-		if(definitions.length == 0 || results.length == 0) {this.Console.log({Message: "Definitions and validated result files are required for pairing", Gravity: "Error"}); return this}
-		//let pairs = []; //Pairs already defined
-		Pairing.form(results, definitions /*, pairs*/); //Open the form for pairing
+		if(definitions.length == 0 || results.length == 0) {this.Console.log({Message: "At least one definition and one validated result files are required for pairing", Gravity: "Error"}); return this}
+		Pairing.form(results, definitions); //Open the form for pairing
 		return this;
 	}
 //*************************
 // ANALYSIS-RELATED METHODS
 //*************************
-	static analysisCheck() { //A function that make the appropriate controls before running an analysis
-		if(this.Plate === undefined) {this.Console.log({Message: "No plate defined", Gravity: "Error"}); return false}
-		let results = this.Tables.Results.Selected;
-		if(results.length == 0) {this.Console.log({Message: "No result file selected", Gravity: "Error"}); return false}
-		return results[0];
+	static Report(type) { //Update the window.Results data and Open the desired report page
+		let results = this.Tables.Results.Array.filter(function(r) {return r.Validated}); //Only validated results
+		window.Results = results;
+		if(type === undefined) {return this} //No need to do more in that case
+		if(this.Plate === undefined) {this.Console.log({Message: "No plate defined", Gravity: "Error"}); return this} //Check that a plate exist
+		if(results.length == 0) {this.Console.log({Message: "No result file available", Gravity: "Error"}); return this} //Check that results exist
+		switch(type) { //Open the desired report page
+			case "zFactor": return this.zFactor();
+			case "aggregate": return this.aggregate();
+			case "grouped": return this.grouped();
+		}
 	}
 	static zFactor() { //Compute and report z-factor across all plates
-		let result = this.analysisCheck();
-		if(result == false) {return this} //Error
 		let controls = Area.getControls(this.Tables.Areas.Array);
 		if(controls.Count == 0) {this.Console.log({Message: "No controls defined in the current layout", Gravity: "Error"}); return this}
-		Reporter.zFactor(controls, result);
+		Reporter.zFactor(controls);
 		return this;
 	}
 	static aggregate() { //Compute and report stats for aggregated areas (column analysis)
-		let result = this.analysisCheck();
-		if(result == false) {return this} //Error
 		let areas = Area.getAreas(this.Tables.Areas.Array);
 		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
-		Reporter.aggregate(areas, result);
+		Reporter.aggregate(areas);
 		return this;
 	}
 	static grouped() { //Features for grouped analysis
-		let result = this.analysisCheck();
-		if(result == false) {return this} //Error
 		let areas = Area.getAreas(this.Tables.Areas.Array);
 		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
 		let conc = this.Plate.getConc(); //Loop the plate to get the conc categorized per unit
-		Reporter.grouped(areas, conc, result);
+		Reporter.grouped(areas, conc);
 		return this;
 	}
 }

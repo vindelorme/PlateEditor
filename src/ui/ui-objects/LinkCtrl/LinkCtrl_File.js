@@ -12,7 +12,7 @@ class LinkCtrl_File extends LinkCtrl {
 	}
 	//Static Methods
 	static dropMsg(msg) { //return the html for the msg to display as inner content of the drop box
-		return "<div class=\"LinkCtrl_FileDropInner\">" + msg + "</div>";
+		return "<div class=\"LinkCtrl_FileDropInner\" ondragenter=\"event.target.remove()\">" + msg + "</div>";
 	}
 	//Methods
 	html() { //Initialize the html for the control
@@ -56,7 +56,7 @@ class LinkCtrl_File extends LinkCtrl {
 			e.target.innerHTML = "";
 			e.preventDefault();
 		});
-		drop.addEventListener("dragexit", function(e) {
+		drop.addEventListener("dragleave", function(e) {
 			e.target.className = "LinkCtrl_FileDrop";
 			e.target.innerHTML = LinkCtrl_File.dropMsg(this.DragMsg) ;
 			e.preventDefault();

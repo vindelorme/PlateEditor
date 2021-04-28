@@ -253,7 +253,7 @@ class Layer {
 			plate.highlight();
 			if(timeOut) {clearTimeout(timeOut)}
 			plate.infoPopup(); //hide the popup
-		}.bind(this));
+		}.bind(this), {passive: true});
 		return this;
 	}
 	grid(G) { //Draw the grid layer using the grid provided from plate

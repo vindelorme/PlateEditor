@@ -15,6 +15,7 @@ class ResultManager {
 			ExtremumSource: root + "_ExtremumSource",
 			PlateSelect: root + "_PlateSelect",
 			LayerSelect: root + "_LayerSelect",
+			Pairing: root + "_Pairing",
 		}
 		this.ResultTab = undefined;
 		let action = function(v) {this.draw(this.Results.Selected[0])}.bind(this);
@@ -41,6 +42,7 @@ class ResultManager {
 		let html = "";
 		html += "<div style=\"overflow: auto\">"; //Options ribbon
 			html += "<fieldset style=\"float: left\"><legend>Plate view</legend><div id=\"" + this.Anchors.PlateSelect + "\"></div></fieldset>";
+			html += "<fieldset style=\"float: left\"><legend>Pairing</legend><div id=\"" + this.Anchors.Pairing + "\"></div></fieldset>";
 			html += "<fieldset style=\"float: left\"><legend>Linked Layer</legend><div id=\"" + this.Anchors.LayerSelect + "\"></div></fieldset>";
 			html += "<fieldset style=\"float: left\"><legend>Heatmap</legend><div id=\"" + this.Anchors.HeatmapOptions + "\"></div></fieldset>";
 			html += "<fieldset style=\"float: left\"><legend>Min & Max</legend>";
@@ -48,7 +50,7 @@ class ResultManager {
 				html += "<div id=\"" + this.Anchors.Extremums + "\" style=\"float: left; display: none; margin-left: 5px\"></div>"; //Custom values for the min/max
 			html += "</fieldset>";
 		html += "</div>";
-		html += "<div id=\"" + this.Anchors.ResultTab + "\" class=\"LinkCtrl_Tab LinkCtrl_Round\" style=\"margin-top: 10px\"><p>Click on a result file to display heatmaps for selected parameters</p></div>"; //Result tab
+		html += "<div id=\"" + this.Anchors.ResultTab + "\" class=\"LinkCtrl_Tab LinkCtrl_Round\" style=\"margin-top: 10px; padding-left: 10px;\"><p>Click on a result file to display heatmaps for selected parameters</p></div>"; //Result tab
 		GetId(this.Anchors.Root).innerHTML = html;
 		this.PlateSelect.init();
 		this.LayerSelect.init();
@@ -100,7 +102,7 @@ class ResultManager {
 		if(inputs === undefined) { //If nothing is passed, we are in edition mode, no need to concatenate
 			inputs = this.Results.Array;
 			concat = false;
-		} 
+		}
 		if(inputs.length == 0) {return this} //No results available
 		Mapper.map(inputs, {Validate: true, BackToImport: BackToImport,
 			Done: function() { //What to do on mapping completion
@@ -127,13 +129,16 @@ class ResultManager {
 		let tab = GetId(this.Anchors.ResultTab);
 		if(result.Validated == false) { //Result not validated
 			tab.innerHTML = "<p class=\"Error\" style=\"text-align: center\">Result file not validated</p>";
-			if(I === undefined) {this.validate(result)} //Prompt to validate, will not show if a second parameter is provided. This happens when the plate is resized
+			if(I === undefined) {this.validate(result)} //Prompt to validate, will not show if a second parameter is provided, which happens when the plate is resized
 			return this;
 		}
 		tab.style.height = tab.clientHeight + "px"; //Lock the panel in its present state
 		let array = [];
 		let tabs = []; //Array to hold the new tabs for the TabControl
 		this.PlateSelect.updateList(result.PlatesID);
+		let plateIndex = this.PlateSelect.getValue();
+		Pairing.resize(result); //Resize the Pairing array in case of change of plate size
+		Pairing.setLinkedPlate(result, plateIndex, this.Anchors.Pairing); //Update pairing information for the selected plate
 		this.ResultTab = new TabControl({ //Create the TabControl to initialize the tabs as TabPanel objects
 			ID: this.Anchors.ResultTab,
 			Multiple: true,

@@ -50,14 +50,6 @@ legend {
 	border: 1px solid black;
 	padding: 1px 5px; 
 }
-.Error {
-	font-style: italic;
-	color: tomato;
-}
-.Success {
-	font-weight: bold;
-	color: darkgreen;
-}
 .FootNote {
 	font-size: 0.8em;
 	color: darkblue;

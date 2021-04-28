@@ -33,6 +33,7 @@ class Form_Import {
 				Input: id + "_Input",
 				Table: id + "_InputTable",
 				InputType: id + "_InputType",
+				//InputOptions: id + "_InputOptions",
 				InputSelection: id + "_InputSelection",
 				Parsing: id + "_Parsing",
 				Parser: id + "_Parser",
@@ -46,7 +47,7 @@ class Form_Import {
 			}
 			this.Controls = {
 				File: LinkCtrl.new("File", {ID: this.Anchors.Input, Default: "", Accept: ".txt,.csv,.xls,.xlsx"}),
-				ManualName: LinkCtrl.new("Text", {ID: this.Anchors.Input, Default: "", Label: "Name", NewLine: true, Title: "Type a name for your data here"}),
+				ManualName: LinkCtrl.new("Text", {ID: this.Anchors.Input, Default: "", Label: "Name", /*NewLine: true,*/ Title: "Type a name for your data here"}),
 				Manual: LinkCtrl.new("TextArea", {ID: this.Anchors.Input, Default: "", Preserve: true, Index: 1, Title: "Type or paste your data here"}),
 				Table: new RespTable({ID: this.Anchors.Table, Fields: ["Name", "Format", "Source", "Type"], RowNumbers: true, Preserve: true, onSelect: function(S, oldS, index, oldIndex) {this.selectInput(index, oldIndex)}.bind(this)}),
 				InputType: LinkCtrl.new("Radio", {ID: this.Anchors.InputType, List: ["From file(s)", "Manual input"], Default: 0, ControlLeft: true, Change: function() {this.changeInputType()}.bind(this), Title: "Type of input desired"}),
@@ -69,16 +70,28 @@ class Form_Import {
 		return this;
 	}
 	static bindEvents() { //Initialize the LinkCtrl inputs and dynamic behaviour to the elements of the form
-		var b = LinkCtrl.button({Label: "Add", Title: "Add the input", Click: function() {this.addInput()}.bind(this)});
+		var b = LinkCtrl.button({Label: "Add", Title: "Add these inputs to the list of selected inputs", Click: function() {this.addInput()}.bind(this)});
 		GetId(this.Anchors.InputSelection).append(b); //Button to add the input to the table
 		this.Controls.Table.init();
 		this.Controls.InputType.init().change(); //Trigger a change on init to append the correct html attached to the selected input
 	}
 	static changeInputType() { //Follows a change in the selected input type
 		switch(this.Controls.InputType.Selected) {
-			case "From file(s)": this.Controls.File.init(); break;
-			case "Manual input": 
+			case "From file(s)": this.Controls.File.init(); break; //In case of file, simply init the LinkCtrl object
+			case "Manual input": //In this case, init two LinkCtrls and create buttons to insert a Tab and export the data
 				this.Controls.ManualName.init();
+				let bar = LinkCtrl.buttonBar([
+					{Label: "Insert Tab", Click: function() {
+						let me = this.Controls.Manual;
+						me.setValue(me.Value + "\t");
+						me.focus(); //Focus back on the textarea to facilitate typing
+					}.bind(this), Title: "Click to insert a Tabulation"},
+					{Label: "Get as txt", Click: function() {
+						Form.download(this.Controls.Manual.getValue(), {FileName: "Manual_input.txt"});
+					}.bind(this), Title: "Click to download your manual input as a txt file"},
+				], true); //Set the buttons inline
+				GetId(this.Anchors.Input).insertAdjacentHTML("beforeend", "&nbsp;");
+				GetId(this.Anchors.Input).insertAdjacentElement("beforeend", bar);
 				this.Controls.Manual.init();
 				break;
 			default: break;
