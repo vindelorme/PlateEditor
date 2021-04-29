@@ -74,7 +74,7 @@ For grouped analysis, you will be able to select the data you want to see as row
 For a more complete and detailed presentation of all PlateEditor's functionalities, check-out the on-line [wiki](https://sourceforge.net/p/plateeditor/wiki/Home/).
 
 ## Contributing
-Please let us know if you encounter bugs or encounter display issues in your browser.
+Please let us know if you see any bugs or encounter display issues in your browser.
 
 
 ## License
