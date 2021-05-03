@@ -12,7 +12,7 @@ class Report_Aggregate extends Report {
 			{Label: "Areas", SetActive: true, Content: {Type: "HTML", Value: "<div style=\"max-height: 500px; overflow: auto\" id=\"Areas\"></div>"} },
 		]);
 		this.UI.A = new RespTable({ID: "Areas", Fields: ["Name"], RowNumbers: true, NoControls: true, Multiple: true, Array: source.Combinations.A, onSelect: this.computeStats.bind(this)});
-		let b = LinkCtrl.button({Label: "Compute all", Title: "Click here to compute the stat summaries for all plates", Click: function() {this.this.statsAllPlates()}.bind(this)});
+		let b = LinkCtrl.button({Label: "Compute all", Title: "Click here to compute the stat summaries for all plates", Click: function() {this.statsAllPlates()}.bind(this)});
 		GetId(this.Anchors.PlateDoAll).append(b);
 		let bar = LinkCtrl.buttonBar([
 			{Label: "Unselect all", Title: "Click here to unselect all areas", Click: function() {this.UI.A.setValue([]); this.computeStats()}.bind(this)},
