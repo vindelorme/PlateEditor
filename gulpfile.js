@@ -17,6 +17,7 @@ gulp.task("clean", function(cb) {
 	.pipe(clean());
 });
 gulp.task("build", function(cb) {
+	//let apps = ["editor", "plotter", "helper", "grapher", "shared", "analyzer", "ui"];
 	let apps = ["editor", "shared", "analyzer", "ui"];
 	apps.forEach(function(a) { //Loop the array of apps to build
 		//Build the js files
@@ -41,7 +42,7 @@ gulp.task("release", function(cb) {
 	let stream = mergeStream();
 	folders.forEach(function(f) {
 		stream.add(
-			gulp.src(f + "/*")
+			gulp.src([f + "/**/*", "!" + f + "/**/*.ini"])
 			.pipe(rename(function(file) {
 				file.dirname = f + '/' + file.dirname;
 			}))
