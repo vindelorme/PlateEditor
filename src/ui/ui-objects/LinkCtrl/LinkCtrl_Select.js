@@ -13,7 +13,7 @@ class LinkCtrl_Select extends LinkCtrl {
 		return this;
 	}
 	//Getter
-	get Selected() { //Return the name of the selected item; use .Value to get its index
+	get Selected() { //Return the name of the selected item; use .getValue() to get its index
 		return this.List[this.Value];
 	}
 	//Methods
@@ -21,13 +21,15 @@ class LinkCtrl_Select extends LinkCtrl {
 		let html = "";
 		if(this.NavBar) { //Add navigation elements
 			let middle = this.getClass({ForceMiddle: true});
-			html += "<span class=\"LinkCtrl" + this.getClass({LeftOnly: true}) + "\" title=\"Move to the first element\" style=\"padding: 0.5em 0.2em;\">" + LinkCtrl.icon({Type: "First"}) + "</span>"; //First element
-			html += "<span class=\"LinkCtrl" + middle + "\" title=\"Move one element backward\" style=\"border-right: none; border-left: none; padding: 0.5em 0.2em;\">" + LinkCtrl.icon({Type: "Left"}) + "</span>"; //Go one before
-			html += "<label id=\"" + this.Me + "\" title=\"" + this.Title + "\" class=\"LinkCtrl" + middle + "\">"; //Opening label for the control
-			html += this.htmlInternal(); //Select element
-			html += "</label>"; //Closure of the control
-			html += "<span class=\"LinkCtrl" + middle + "\" title=\"Move one element forward\" style=\"border-right: none; border-left: none; padding: 0.5em 0.2em\">" + LinkCtrl.icon({Type: "Right"}) + "</span>"; //Go one after
-			html += "<span class=\"LinkCtrl" + this.getClass({RightOnly: true}) + "\" title=\"Move to the last element\" style=\"padding: 0.5em 0.2em\">" + LinkCtrl.icon({Type: "Last"}) + "</span>"; //Last element
+			html += "<span style=\"white-space: pre\">"; //Wrapping span
+				html += "<span class=\"LinkCtrl" + this.getClass({LeftOnly: true}) + "\" title=\"Move to the first element\" style=\"padding: 0.5em 0.2em;\">" + LinkCtrl.icon({Type: "First"}) + "</span>"; //First element
+				html += "<span class=\"LinkCtrl" + middle + "\" title=\"Move one element backward\" style=\"border-right: none; border-left: none; padding: 0.5em 0.2em;\">" + LinkCtrl.icon({Type: "Left"}) + "</span>"; //Go one before
+				html += "<label id=\"" + this.Me + "\" title=\"" + this.Title + "\" class=\"LinkCtrl" + middle + "\">"; //Opening label for the control
+				html += this.htmlInternal(); //Select element
+				html += "</label>"; //Closure of the control
+				html += "<span class=\"LinkCtrl" + middle + "\" title=\"Move one element forward\" style=\"border-right: none; border-left: none; padding: 0.5em 0.2em\">" + LinkCtrl.icon({Type: "Right"}) + "</span>"; //Go one after
+				html += "<span class=\"LinkCtrl" + this.getClass({RightOnly: true}) + "\" title=\"Move to the last element\" style=\"padding: 0.5em 0.2em\">" + LinkCtrl.icon({Type: "Last"}) + "</span>"; //Last element
+			html += "</span>"; //Closure of the wrapping span
 		}
 		else {
 			html += "<label id=\"" + this.Me + "\" title=\"" + this.Title + "\" class=\"LinkCtrl" + this.Classes + "\">"; //Opening label for the control

@@ -43,13 +43,11 @@ class Section {
 		}
 	}
 	static fullName(s) { //Provide a name representing the full data embedded in the section
-		let names = [Analyzer.Report.FileName, s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
+		let names = [s.Bloc.File, s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
 		let name = "(" + names[0] + ")_" + names[1] + "_[" + names[2] + "]"; //Merge the names together into a single string: (fileName)_BlocName_[SectionName]
 		return name.replace(/_{2,}/g, '_'); //Eliminate consecutive _
 	}
 	static fileHeader(s) { //Prepare a header for the file to be exported, that summarizes exactly where these data belongs to
-		//let names = [Analyzer.Report.FileName, s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
-		//return "Data for Result file: [" + names[0] + "]; Parameter:  [" + names[1] + "]; Table: [" + names[2] + "]\n"; //Merge the names together into a single string
 		let names = [s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
 		return "Data for Result file: [" + s.Bloc.File + "]; Parameter:  [" + names[0] + "]; Table: [" + names[1] + "]\n"; //Merge the names together into a single string
 	}

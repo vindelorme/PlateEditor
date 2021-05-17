@@ -12,12 +12,14 @@ class Plate {
 		this.Selecting = undefined; //Object to handle the selection
 		this.Anchors = {
 			Options: root + "_Options",
+			Selection: root + "_Selection",
 			LayerTab: root + "_LayerTab",
 			LayerSelect: root + "_LayerSelect",
 		}
 		this.Options = {
 			KeepSelected: LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Title: "If checked, the selection will remain active after a tag (area or concentration)", Default: true, Label: "Keep selection", Chain: {Index: 0}}),
 			Digits: LinkCtrl.new("Select", {ID: this.Anchors.Options, Title: "Number of digits to show for the concentrations", Label: "Digits", Default: 1, List: [2, 3, 4, 5, 6, "All"], Chain: {Index: 1, Last: true}, Change: function(v) {this.digit()}.bind(this)}),
+			AddToSel: LinkCtrl.new("Checkbox", {ID: this.Anchors.Selection, Default: false, Label: "Multiple", Title: "If turned on, selected wells will be added to the current selection. If you have a keyboard, keep the Ctrl key pressed down while selecting to obtain the same effect."}),
 		}
 		this.Controls = {
 			LayerSelect: LinkCtrl.new("Select", {ID: this.Anchors.LayerSelect, Default: 0, Label: "Layer", List: [1], NavBar: true, Change: function(v) {
@@ -163,8 +165,9 @@ class Plate {
 		let out = GetId(this.Root);
 		let html = "";
 		html += "<div style=\"overflow: auto\">"; //Options ribbon
-			html += "<fieldset style=\"float: left\"><legend>Options</legend><div id=\"" + this.Anchors.Options + "\"></div></fieldset>"; 
+			html += "<fieldset style=\"float: left\"><legend>Selection</legend><div id=\"" + this.Anchors.Selection + "\"></div></fieldset>";
 			html += "<fieldset style=\"float: left\"><legend>Zoom</legend></fieldset>";
+			html += "<fieldset style=\"float: left\"><legend>Options</legend><div id=\"" + this.Anchors.Options + "\"></div></fieldset>"; 
 			html += "<fieldset style=\"float: left\"><legend>Views</legend></fieldset>";
 		html += "</div>";
 		html += "<div id=\"" + this.Anchors.LayerTab + "\" style=\"margin-top: 10px\"></div>"; //Tab container for layers
@@ -174,22 +177,29 @@ class Plate {
 		Object.values(this.Options).forEach(function(o) {o.init()});
 		let b = LinkCtrl.buttonBar([
 			{Label: "Add layer", Title: "Add a new layer to the plate", Click: function() {this.addLayer()}.bind(this)},
-			{Label: "Unselect", Title: "Unselect all wells for all layers", Click: function() {this.resetSelection()}.bind(this)},
+			//{Label: "Unselect", Title: "Unselect all wells for all layers", Click: function() {this.resetSelection()}.bind(this)},
 		], true); //Here true is set so that the buttons are added Inline
 		let o = GetId(this.Anchors.Options);
 		o.insertAdjacentHTML("beforeend", "&nbsp;");
 		o.append(b);
-		let z = LinkCtrl.buttonBar([
+		let z = LinkCtrl.buttonBar([ //Zoom controls
 			{Label: "", Title: "Zoom in on the layout, each well will be bigger", Icon: {Type: "ZoomIn"}, Click: function() {this.zoom(1)}.bind(this)},
 			{Label: "", Title: "Zoom out on the layout, each well will be smaller", Icon: {Type: "ZoomOut"}, Click: function() {this.zoom(-1)}.bind(this)},
 		]);
 		out.children[0].children[1].append(z);
-		let m = LinkCtrl.buttonBar([
+		let v = LinkCtrl.buttonBar([ //Views controls
 			{Label: "Types", Title: "Display a map showing the type of area defined for each well", Click: function() {this.typeMap()}.bind(this)},
 			{Label: "Plates", Title: "Display a form to navigate between the different plates available for the definitions", Click: function() {this.plateMap()}.bind(this)},
 			{Label: "Conc.", Title: "Display a map showing the concentrations defined for each well, per layer", Click: function() {this.concMap()}.bind(this)},
 		]);
-		out.children[0].children[2].append(m);
+		out.children[0].children[3].append(v);
+		let s = LinkCtrl.buttonBar([ //Selection controls
+			//{Label: "Start selection", Title: "Set the selected well as the starting point for a group of wells", Click: function() {this.touchPad("start")}.bind(this)},
+			{Label: "Clear", Title: "Unselect all wells for all layers", Click: function() {this.resetSelection()}.bind(this)},
+		], true);
+		o = GetId(this.Anchors.Selection);
+		o.insertAdjacentHTML("beforeend", "&nbsp;");
+		o.append(s);
 		this.grid();
 		return this;
 	}
@@ -225,11 +235,11 @@ class Plate {
 		return this;
 	}
 	wellAtPointer(e, l) {
-		var margin = this.WellMargin;
-		var space = this.WellSize + margin;
-		var offset = space - 0.5 * margin;
-		var col = Math.floor((e.layerX - offset) / space);
-		var row = Math.floor((e.layerY - offset) / space);
+		let margin = this.WellMargin;
+		let space = this.WellSize + margin;
+		let offset = space - 0.5 * margin;
+		let col = Math.floor((e.layerX - offset) / space);
+		let row = Math.floor((e.layerY - offset) / space);
 		if(col > -1 && row > -1 && row < this.Rows && col < this.Cols) {return l.Wells[row * this.Cols + col]} //Return a "true" well object
 		else { //Pointer is on a row or col header, return a simplified version of a well
 			return {Col: col, Row: row, Layer: l, Index: row * this.Cols + col, Header: true}
@@ -376,9 +386,9 @@ class Plate {
 //*****************
 //SELECTION METHODS
 //*****************
-	select(e, I) { //Handle the selection process
+	select(e, coords, I) { //Handle the selection process
 		if(I.Start) {
-			this.startSelection(e, I.Start);
+			this.startSelection(e, coords, I.Start);
 		}
 		if(I.Stop) {
 			if(this.Selecting) {
@@ -393,7 +403,7 @@ class Plate {
 			if(GetId(Editor.Anchors.Popup.Area).innerHTML.length + GetId(Editor.Anchors.Popup.Conc).innerHTML.length == 0) {this.infoPopup()} //Hide the tooltip if nothing else to show
 		}
 		if(I.Move) {
-			this.moveSelection(e, I.Move);
+			this.moveSelection(e, coords, I.Move);
 		}
 		return this;
 	}
@@ -405,7 +415,7 @@ class Plate {
 		});
 		return this;
 	}
-	startSelection(e, w) { //Start the selection process
+	startSelection(e, coords, w) { //Start the selection process
 		var B = document.createElement("canvas"); //Create 2 new canvas, one is for the selection box, the other is for the highlight of the selected wells
 		B.width = this.Grid.width;     //
 		B.height = this.Grid.height;   //
@@ -420,17 +430,17 @@ class Plate {
 		Plate.styleCtx(ctx, "selecting");
 		e.target.parentElement.append(B); //Append both canvas to the page
 		e.target.parentElement.append(S); //
-		this.Selecting = {Start: w, Box: B, Select: S, x: e.layerX, y: e.layerY, LastVisited: w, Includes: [w]} //Update the Select object
+		this.Selecting = {Start: w, Box: B, Select: S, x: coords.layerX, y: coords.layerY, LastVisited: w, Includes: [w]} //Update the Select object
 		this.drawWellsInLasso(ctx, w);
 	}
-	moveSelection(e, w) {
+	moveSelection(e, coords, w) {
 		var x = this.Selecting.x;
 		var y = this.Selecting.y;
 		var B = this.Selecting.Box;
 		var ctx = B.getContext("2d");
 		ctx.clearRect(0, 0, B.width, B.height); //Draw the selection lasso
-		ctx.fillRect(x, y, e.layerX - x, e.layerY - y);
-		ctx.strokeRect(x, y, e.layerX - x, e.layerY - y);
+		ctx.fillRect(x, y, coords.layerX - x, coords.layerY - y);
+		ctx.strokeRect(x, y, coords.layerX - x, coords.layerY - y);
 		if(w.Index == this.Selecting.LastVisited.Index) {return} //Cursor is still on the same well, no need to update the selection
 		else { //Update the selection
 			var S = this.Selecting.Select;
@@ -683,11 +693,11 @@ class Plate {
 							val.Tags.push(w.Index);
 						}
 						else { //Create a new value group
-							unit.Values.push({Value: w.Value, Type: "Conc", Tags: [w.Index]});
+							unit.Values.push({Value: w.Value, Type: "Conc", Name: w.Unit, Tags: [w.Index]});
 						}
 					}
 					else { //Create a new group for this unit 
-						conc.push({Unit: w.Unit, Name: w.Unit, Values: [{Value: w.Value, Type: "Conc", Tags: [w.Index]}]}); //Name and Type fields are added for consistency between objects sent to the analyzer
+						conc.push({Unit: w.Unit, Name: w.Unit, Values: [{Value: w.Value, Type: "Conc", Name: w.Unit, Tags: [w.Index]}]}); //Name and Type fields are added for consistency between objects sent to the analyzer
 					}
 				}
 			})

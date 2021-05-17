@@ -22,12 +22,10 @@ class Reporter {
 	static header(I) { //Prepare the header for the html report page
 		let title = (I.Title || "Report");
 		let html = this.htmlHeader(I.Method);
-		//html +="\t<script type=\"text/javascript\">window.onload = function() {Analyzer.init({Method: \"" + I.Method + "\", Title: \"" + title + "\", FileName: \"" + I.FileName + "\"})}</script>\n"; //Script to init the Analyzer on loading the page
 		html +="\t<script type=\"text/javascript\">window.onload = function() {Analyzer.init({Method: \"" + I.Method + "\", Title: \"" + title + "\"})}</script>\n"; //Script to init the Analyzer on loading the page
 		html += "</head>\n";
 		html += "<body style=\"font-family: arial; font-size: 16px\">\n";
 		html += "<div id=\"Header\">\n"; //Header
-		//html += "\t<p><b>" + title + "<br>" + I.FileName + "</b></p>\n";
 		html += "\t<p><b>" + title + "</b></p>\n";
 		html += "</div>\n";
 		html += "<div id=\"Main\">\n";  //Opening of the main report div

@@ -95,7 +95,7 @@ class Editor {
 			},
 			Concentration: {
 				Value: LinkCtrl.new("Number", {ID: this.Anchors.Menu.Conc, Title: "Value for the concentration", Min: 0, Default: 20, Label: "Value", Preserve: true, Chain: {Index: 0}}),
-				Unit: LinkCtrl.new("Select", {ID: this.Anchors.Menu.Conc, Title: "Unit for the concentration", Default: 2, Label: "Unit", ControlLeft: true, Chain: {Index: 1, Last: true}, List: ["M", "mM", "µM", "nM", "pM", "g/L", "g/mL", "mg/mL", "µg/mL", "ng/mL", "pg/mL", "%", "u/mL", "ku/mL", "Mu/mL", "MOI", "×", "a.u"]}),
+				Unit: LinkCtrl.new("Select", {ID: this.Anchors.Menu.Conc, Title: "Unit for the concentration", Default: 2, Label: "Unit", ControlLeft: true, Chain: {Index: 1, Last: true}, List: Unit.list({Name: true})}),
 				Doses: LinkCtrl.new("Number", {ID: this.Anchors.Menu.DRC, Title: "Total number of doses in the dose-response curve", Min: 0, Default: 10, Label: "Doses", Preserve: true, Chain: {Index: 0}}),
 				Rep: LinkCtrl.new("Number", {ID: this.Anchors.Menu.DRC, Title: "How many times the same dose should be replicated side-by-side", Min: 0, Default: 1, Label: "Replicates", ControlLeft: true, Chain: {Index: 1, Last: true}}),
 				Operator: LinkCtrl.new("Select", {ID: this.Anchors.Menu.DRC, Title: "Mathematical operator to use for calculation of the next dose", Chain: {Index: 2, NewLine: true}, Default: 0, Label: "Operator", List:["/", "×", "+", "×10^"]}),
@@ -513,7 +513,7 @@ class Editor {
 		let op = c.Operator.Selected;
 		op = op.replace("×", "*"); //× is good for display but not for math...
 		op = op.replace("^", "**"); //^ is good for display but not for math...
-		var I = {
+		let I = {
 			Value: c.Value.getValue(),
 			Unit: c.Unit.Selected,
 			Doses: c.Doses.getValue(),

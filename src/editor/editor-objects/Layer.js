@@ -190,6 +190,26 @@ class Layer {
 		l.Rows = r; //Update layer size
 		l.Cols = c; //
 	}
+	static getCoords(e) { //Returns the coordinates for the event e, normalized for either mouse or touch screen events
+		//console.log(e);
+		if(e.clientX) { //Mouse event
+			return {
+				clientX: e.clientX,
+				clientY: e.clientY,
+				layerX: e.layerX,
+				layerY: e.layerY,
+			}
+		}
+		e.preventDefault();
+		let source = e.targetTouches;
+		if(e.targetTouches.length == 0) {source = e.changedTouches}
+		return { //Touch Screen event
+			clientX: source[0].clientX,
+			clientY: source[0].clientY,
+			layerX: source[0].clientX - e.target.getBoundingClientRect().x,
+			layerY: source[0].clientY - e.target.getBoundingClientRect().y,
+		}
+	}
 	//Methods
 	init() { //Initialize the html elements for the layer
 		let html = "";
@@ -208,23 +228,31 @@ class Layer {
 	bindEvents(root) { //Bind events to the layer
 		let plate = this.Plate;
 		let timeOut = undefined;
-		root.addEventListener("mousedown", function(e) {
-			if(e.button == 0) {
-				let w = plate.wellAtPointer(e, this);
-				if(e.ctrlKey == false) {plate.resetSelection()} //Reset previous selection for the entire plate
-				plate.select(e, {Start: w});
-			}
-		}.bind(this));
-		root.addEventListener("mouseup", function(e) {
-			let w = plate.wellAtPointer(e, this);
-			plate.select(e, {Stop: true, Layer: this.Index, Well: w});
-		}.bind(this));
-		root.addEventListener("mousemove", function(e) {
+		let down = function(e) { //Mouse down (or touch start)
+			if(e.button !== undefined && e.button != 0 ) {return}
+			if(e.touches !== undefined && e.touches.length > 1) {return}
+			let coords = Layer.getCoords(e);
+			let w = plate.wellAtPointer(coords, this);
+			if(e.ctrlKey == false && plate.Options.AddToSel.getValue() == false) {plate.resetSelection()} //Reset previous selection for the entire plate
+			plate.select(e, coords, {Start: w});
+		}.bind(this);
+		let up = function(e) { //Mouseup (touch end)
+			let coords = Layer.getCoords(e);
+			let w = plate.wellAtPointer(coords, this);
+			plate.select(e, coords, {Stop: true, Layer: this.Index, Well: w});
+		}.bind(this);
+		let stop = function(e) { //Stop the selection
+			plate.highlight();
+			if(timeOut) {clearTimeout(timeOut)}
+			plate.infoPopup(); //hide the popup
+		}.bind(this);
+		let move = function(e) { //Move the cursor and extend the selection
 			if(e.target.nodeName != "CANVAS") {return}
-			let w = plate.wellAtPointer(e, this);
+			let coords = Layer.getCoords(e);
+			let w = plate.wellAtPointer(coords, this);
 			let popup = GetId(Editor.Anchors.Popup.Root);
-			popup.style.left = e.clientX + 10 + "px";
-			popup.style.top = e.clientY - 40 + "px";
+			popup.style.left = coords.clientX + 10 + "px";
+			popup.style.top = coords.clientY - 40 + "px";
 			if((plate.Highlighting && plate.Highlighting.Index != w.Index) || (plate.Highlighting === undefined)) { //A different well is being highlighted, or nothing is currently highlighted
 				plate.highlight(e, w);
 				if(timeOut) {
@@ -239,21 +267,22 @@ class Layer {
 				timeOut = setTimeout(plate.infoPopup.bind(plate), 500, e, w); //Show the popup after 500ms of mouse inactivity
 //******************************************************************************
 			}
-			if(e.buttons == 0) {plate.select(undefined, {Stop: true})}
+			if(e.buttons == 0) {plate.select(undefined, coords, {Stop: true})}
 			else {
-				if(plate.Selecting) {plate.select(e, {Move: w})}
+				if(plate.Selecting) {plate.select(e, coords, {Move: w})}
 			}
-		}.bind(this));
-		root.addEventListener("mouseout", function(e) {
-			plate.highlight();
-			if(timeOut) {clearTimeout(timeOut)}
-			plate.infoPopup(); //hide the popup
-		}.bind(this));
-		root.addEventListener("wheel", function(e) {
-			plate.highlight();
-			if(timeOut) {clearTimeout(timeOut)}
-			plate.infoPopup(); //hide the popup
-		}.bind(this), {passive: true});
+		}.bind(this);
+		root.addEventListener("touchstart", down, {passive: false});
+		root.addEventListener("mousedown", down);
+		root.addEventListener("touchend", function(e) { //For touch screen there is no pointer out, so combine it with touchend
+			up(e);
+			stop(e);
+		});
+		root.addEventListener("mouseup", up);
+		root.addEventListener("touchmove", move, {passive: false});
+		root.addEventListener("mousemove", move);
+		root.addEventListener("mouseout", stop);
+		root.addEventListener("wheel", stop, {passive: true});
 		return this;
 	}
 	grid(G) { //Draw the grid layer using the grid provided from plate

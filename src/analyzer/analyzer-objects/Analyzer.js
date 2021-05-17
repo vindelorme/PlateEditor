@@ -13,6 +13,13 @@ class Analyzer {
 		if(n.toFixed === undefined || d == "All") {return n} //Not a number or all decimals required
 		return n.toFixed(d);
 	}
+	static logValue(v) { //Compute the log10 of the value v for the report passed
+		let log = Math.log10(v.Value);
+		if(this.Report.Options.Shift.getValue()) { //Shift to the higher unit
+			return log + Unit.shiftForUnit(v.Name);
+		}
+		return log;
+	}
 	static isNumeric(v) { //Returns a boolean to indicate if the value is text or number
 		return (v !== undefined && v.toFixed !== undefined && isNaN(v) == false);
 	}
@@ -27,9 +34,26 @@ class Analyzer {
 	static noData() { //The string used to indicate this cell has no data
 		return "<span class=\"warning\">&Oslash;</span>";
 	}
+	static header(o) { //Return the html header for the row/col object provided
+		if(o.Unit) {
+			let html = "<span class=\"Header_Conc\" name=\"" + o.Name + "\">";
+			if(this.Report.Options.LogScale.getValue()) {html += this.headerConcLog(o.Name)}
+			else {html += o.Name}
+			return html + "</span>";
+		}
+		return o.Name;
+	}
+	static headerConcLog(name, shift) { //Wrap the name into a log10(...) text
+		if(shift) {name = Unit.rootForUnit(name)}
+		return "Log<sub>10</sub>(" + name + ")";
+	}
 	static valueHeader(v) { //Return the html header for the value object v
 		if(v.Type == "Conc") {
-			return "<th class=\"Value_PlaceHolder\" value=\"" + v.Value + "\">" + Analyzer.roundNb(v.Value) + "</th>";
+			let log = this.logValue(v);
+			let out = "";
+			if(this.Report.Options.LogScale.getValue()) {out = this.roundNb(log)}
+			else {out = this.roundNb(v.Value)}
+			return "<th class=\"Value_PlaceHolder Header_Conc\" value=\"" + v.Value + "\" logvalue=\"" + log + "\" shift=\"" + Unit.shiftForUnit(v.Name) + "\">" + out + "</th>";
 		}
 		return "<th>" + v.Name + "</th>";
 	}
@@ -193,9 +217,9 @@ class Analyzer {
 		let headBottom = "<tr>";
 		cols.forEach(function(col) { //Travel the cols to prepare the headers
 			let l = col.Values.length;
-			if(l == 1) {headTop += "<th rowspan = \"2\">" + col.Name + "</th>"} //Only one value for this group
+			if(l == 1) {headTop += "<th rowspan = \"2\">" + this.header(col) + "</th>"} //Only one value for this group
 			else { //A group with more than one values
-				headTop += "<th colspan=\"" + col.Values.length + "\">" + col.Name + "</th>"; //The header for the group
+				headTop += "<th colspan=\"" + col.Values.length + "\">" + this.header(col) + "</th>"; //The header for the group
 				col.Values.forEach(function(v) { //Append all the values 
 					headBottom += this.valueHeader(v);
 				}, this);
@@ -205,12 +229,12 @@ class Analyzer {
 		rows.forEach(function(row, i) { //Travel the rows
 			let r = row.Values.length;
 			if(r == 1) { //This group has only one value, it needs only one row
-				html += "<tr><th>" + row.Name + "</th>" + this.valueHeader(row.Values[0]); //There is only one value
+				html += "<tr><th>" + this.header(row) + "</th>" + this.valueHeader(row.Values[0]); //There is only one value
 				html += this.groupedDataRow(row.Values[0], cols, values, aggregation);
 				html += "</tr>";
 			}
 			else { //Several rows are needed
-				html += "<tr><th rowspan=\"" + r + "\">" + row.Name + "</th>";
+				html += "<tr><th rowspan=\"" + r + "\">" + this.header(row) + "</th>";
 				row.Values.forEach(function(rowV, j) {
 					if(j > 0) {html += "<tr>"}
 					html += this.valueHeader(rowV);
@@ -280,13 +304,23 @@ class Analyzer {
 		let out = "";
 		let cells = row.cells;
 		let c = cells.length;
+		let format = (this.Report.Options.ExportFormat.getValue() == 1); //true means use the formatted data
+		let log = this.Report.Options.LogScale.getValue();
 		for(let j=0; j<c; j++) {
 			if(j > 0) {out += "\t"}
-			out += cells[j].innerText;
+			out += this.valueFromCell(cells[j], format, log);
 		}
 		return out;
 	}
+	static valueFromCell(cell, format, log) { //Extract the value for the DOM cell object provided, formatted as in the cell or the real file value based on the format boolean
+		if(format) {return cell.innerText} //Easy
+		if(cell.hasAttribute("logvalue") && log) {return cell.getAttribute("logvalue")}
+		if(cell.hasAttribute("value")) {return cell.getAttribute("value")}
+		return cell.innerText;
+	}
 	static innerRowToString(row, I) { //Convert a DOM row table containing an innerTable with values into a string
+		let format = (this.Report.Options.ExportFormat.getValue() == 1); //true means use the formatted data
+		let log = this.Report.Options.LogScale.getValue();
 		let start = 1;
 		if(I && I.Start) {start = I.Start}
 		let inner = "";
@@ -301,7 +335,7 @@ class Analyzer {
 				let content = "";
 				if(cell) { //If this cell exist, get its content
 					dataFound = true; 
-					content = cell.innerText;
+					content = this.valueFromCell(cell.children[0], format, log);
 				}
 				if(n > start) {temp += "\t"} //In any case, add a tab to respect column ordering
 				temp += content;
@@ -318,27 +352,29 @@ class Analyzer {
 		return inner;
 	}
 	static groupedTableToString(table) { //Convert a DOM grouped table into a string
+		let format = (this.Report.Options.ExportFormat.getValue() == 1); //true means use the formatted data
+		let log = this.Report.Options.LogScale.getValue();
 		let txt = "";
 		let rows = table.rows;
 		let aggreg = this.Report.UI.DataView.Selected; //Data representation will depend on this factor
 		let AllCols = this.groupedColCount(rows[0].cells); //The number of data columns to output
 		let eltMax = this.groupedEltMaxPerCol(rows, AllCols);
-		txt += this.groupedHeader(rows[0], rows[1], AllCols, eltMax); //Headers for the table
+		txt += this.groupedHeader(rows[0], rows[1], AllCols, eltMax, format, log); //Headers for the table
 		let r = rows.length;
 		for(let i=2; i<r; i++) { //Travel the rows, ignoring the headers, to build the output
-			txt += "\n" + this.groupedHeaderRow(rows[i].cells[0], rows[i].cells[1]);
+			txt += "\n" + this.groupedHeaderRow(rows[i].cells[0], rows[i].cells[1], format, log);
 			let n = rows[i].cells.length;
 			let start = n - AllCols; //Rows for elements within a group have one column header only and should start with a different offset
 			switch(aggreg) { //The aggregation method indicates what to expect for the inner Tables
 				case "Column": txt += this.innerRowToString(rows[i], {Start: start, AfterLine: "\t"}); break; //The entire row is processed by this method. Important to add a tab after each line to keep correct column ordering
 				case "Average": //In this mode, a simple cell hold the value
 					for(let j=0; j<AllCols; j++) { //Travel the cols to build the output
-						txt += "\t" + rows[i].cells[start + j].innerText;
+						txt += "\t" + this.valueFromCell(rows[i].cells[start + j], format, log);
 					}
 				break;
 				default: //Remaining cases, data are in line and a InnerTableRow hold the data
 					for(let j=0; j<AllCols; j++) { //Travel the cols to build the output
-						txt += this.rowTableToString(rows[i].cells[start + j].children[0].children[0], eltMax[j]); //The child table is within a div
+						txt += this.rowTableToString(rows[i].cells[start + j].children[0].children[0], eltMax[j], format, log); //The child table is within a div
 					}
 				break;
 			}
@@ -374,7 +410,7 @@ class Analyzer {
 		}
 		return eltMax;
 	}
-	static groupedHeader(Top, Bottom, c, eltMax) { //For a grouped table, build the output for the headers using eltMax array to pad with tabs and respect column indentation
+	static groupedHeader(Top, Bottom, c, eltMax, format, log) { //For a grouped table, build the output for the headers using eltMax array to pad with tabs and respect column indentation
 		let headerTop = "";
 		let headerBottom = "";
 		let topOffset = 2; //Tracker to follow the cells traversed in the top row. This row starts with two empty cells that span the bottom row
@@ -384,15 +420,15 @@ class Analyzer {
 			if(cell.hasAttribute("rowspan")) { //Individual cell that "count" only for 1
 				let pad = "".padEnd(eltMax[i] - 1, "\t");
 				headerTop += "\t" + pad;
-				headerBottom += cell.innerText + "\t" + pad;
+				headerBottom += this.valueFromCell(cell, format, log) + "\t" + pad;
 			}
 			else { //A group with multiple columns
 				let l = Number(cell.getAttribute("colspan")); //The number of elements in this group
-				headerTop += cell.innerText; //Name of the group
+				headerTop += this.valueFromCell(cell, format, log); //Name of the group
 				for(let j=0; j<l; j++) { //Prepare the headers
 					let pad = "".padEnd(eltMax[i] - 1, "\t");
 					headerTop += "\t" + pad; //Pad with enough tab to respect column indentation
-					headerBottom += Bottom.cells[bottomOffset].innerText + "\t" + pad;
+					headerBottom += this.valueFromCell(Bottom.cells[bottomOffset], format, log) + "\t" + pad;
 					bottomOffset++;
 				}
 				i += (l - 1); //Also need to increment the column count
@@ -401,25 +437,25 @@ class Analyzer {
 		}
 		return "\t\t" + headerTop + "\n" + "\t\t" + headerBottom;
 	}
-	static groupedHeaderRow(first, second) { //For a grouped table, prepare the header for a row given its two first cells
+	static groupedHeaderRow(first, second, format, log) { //For a grouped table, prepare the header for a row given its two first cells
 		if(first.hasAttribute("rowspan")) { //This marks the beginning of a group
-			return first.innerText + "\t" + second.innerText;
+			return this.valueFromCell(first, format, log) + "\t" + this.valueFromCell(second, format, log);
 		}
 		else {
 			if(first.nextSibling.nodeName == "TD") { //Member of a group
-				return "\t" + first.innerText;
+				return "\t" + this.valueFromCell(first, format, log);
 			}
 			else { //Group with only one element
-				return first.innerText + "\t" + second.innerText;
+				return this.valueFromCell(first, format, log) + "\t" + this.valueFromCell(second, format, log);
 			}
 		}
 	}
-	static rowTableToString(table, pad) { //Convert the rowTable given into a string. Pad with the number of tab given if necessary to respect column order
+	static rowTableToString(table, pad, format, log) { //Convert the rowTable given into a string. Pad with the number of tab given if necessary to respect column order
 		let txt = "";
 		let cells = table.rows[0].cells;
 		let n = cells.length;
 		for(let i=0; i<pad; i++) {
-			if(i<n) {txt += "\t" + cells[i].innerText}
+			if(i<n) {txt += "\t" + this.valueFromCell(cells[i], format, log)}
 			else {txt += "\t"}
 		}
 		return txt;
