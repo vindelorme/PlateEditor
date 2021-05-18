@@ -10,7 +10,7 @@ PlateEditor is fully client-side: no data are ever transferred to the server, en
 ## Installation
 
 For users, there is no installation required.
-- If you have Internet access, simply connect to [PlateEditor.com](https://plateeditor.sourceforge.io) and enjoy the latest version of the application.
+- If you have Internet access, simply navigate to the [PlateEditor](https://plateeditor.sourceforge.io) webpage and enjoy the latest version of the application.
 - If you plan to work offline, download the latest available build here: [Latest build](https://sourceforge.net/projects/plateeditor/), unzip the files in your computer and open 'Editor.html' with your web browser.
 Be sure to retrieve the latest build regularly to ensure you can use all the new functionalities!
 
