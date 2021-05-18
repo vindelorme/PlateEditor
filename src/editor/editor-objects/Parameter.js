@@ -41,9 +41,14 @@ class Parameter {
 	}
 	//Methods
 	resize(plate) { //Resize the canvases to match that of the plate
+		let w = plate.Grid.width;
+		let h = plate.Grid.height;
+		let r = Editor.pixelRatio;
 		[this.Grid, this.Highlight].forEach(function(c) { //Resize the elements
-			c.width = plate.Grid.width;
-			c.height = plate.Grid.height;
+			c.width = w;
+			c.height = h;
+			c.style.width = (w / r) + "px";
+			c.style.height = (h / r) + "px";
 		});
 		return this;
 	}
@@ -52,6 +57,7 @@ class Parameter {
 		let space = size + plate.WellMargin;
 		let ctx = this.Grid.getContext("2d");
 		ctx.drawImage(plate.Grid, 0, 0); //Draw the grid from the plate
+		ctx.setTransform(Editor.pixelRatio, 0, 0, Editor.pixelRatio, 0, 0);
 		ctx.lineWidth = 2;
 		ctx.strokeStyle = "red"; //Draw a "x" in each well, that will remain visible if no data is present for this well
 		let row = plate.Rows;
@@ -103,9 +109,10 @@ class Parameter {
 	}
 	draw(result, p) { //Output the heatmap in the root element
 		let target = GetId(this.ID);
+		let r = Editor.pixelRatio;
 		target.innerHTML = ""; //Remove previous content
-		target.style.width = this.Grid.width + "px"; //Adjust container size
-		target.style.height = this.Grid.height + "px";
+		target.style.width = (this.Grid.width / r) + "px"; //Adjust container size
+		target.style.height = (this.Grid.height / r) + "px";
 		target.appendChild(this.Highlight);
 		target.appendChild(this.Grid); //Append the canvas
 		let plate = Editor.Plate;

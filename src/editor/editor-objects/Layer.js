@@ -191,7 +191,6 @@ class Layer {
 		l.Cols = c; //
 	}
 	static getCoords(e) { //Returns the coordinates for the event e, normalized for either mouse or touch screen events
-		//console.log(e);
 		if(e.clientX) { //Mouse event
 			return {
 				clientX: e.clientX,
@@ -286,21 +285,24 @@ class Layer {
 		return this;
 	}
 	grid(G) { //Draw the grid layer using the grid provided from plate
-		var h = G.height;
-		var w = G.width;
+		let h = G.height;
+		let w = G.width;
+		let r = Editor.pixelRatio;
 		[this.Grid, this.Highlight, this.Contents].forEach(function(c) { // Also resize canvas layers to match grid size
 			c.height = h;
 			c.width = w;
+			c.style.height = h / r + "px";
+			c.style.width = w / r + "px";
 		});
-		var div = GetId(this.Root); //Wrapping div for the canvas, also adjust its size
-		div.style.width = G.width + "px";
-		div.style.height = G.height + "px";
+		let div = GetId(this.Root); //Wrapping div for the canvas, also adjust its size
+		div.style.width = (G.width / r) + "px";
+		div.style.height = (G.height / r) + "px";		
 		this.Grid.getContext("2d").drawImage(G, 0, 0);
 		return this;
 	}
 	highlight(array) { //Draw the highlight image at the coordinates provided. Each element in array is an object specifying the image to draw and the coordinates x and y
-		var hl = this.Highlight;
-		var ctx = hl.getContext("2d");
+		let hl = this.Highlight;
+		let ctx = hl.getContext("2d");
 		ctx.clearRect(0, 0, hl.width, hl.height);
 		if(array.length > 0) {
 			array.forEach(function(a) {
@@ -310,8 +312,9 @@ class Layer {
 		return this;
 	}
 	select(array, size, margin) { //Select wells in array
-		var C = this.Contents;
-		var ctx = C.getContext("2d");
+		let C = this.Contents;
+		let ctx = C.getContext("2d");
+		ctx.setTransform(Editor.pixelRatio, 0, 0, Editor.pixelRatio, 0, 0);
 //****************************************************************************************
 //Here, array is first traversed to set all elements in Selected state
 //Then, Wells is fully traversed by filter to recover the selected wells
@@ -345,6 +348,7 @@ class Layer {
 		let ctx = C.getContext("2d");
 		ctx.clearRect(0, 0, C.width, C.height);
 		ctx.font = (Math.floor(margin / 2) * 5) + "px arial"; //Increment the size by 5px every 2 increments.
+		ctx.setTransform(Editor.pixelRatio, 0, 0, Editor.pixelRatio, 0, 0);
 		this.Wells.forEach(function(w) {
 			w.content(ctx, size, margin);
 		});

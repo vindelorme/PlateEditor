@@ -118,8 +118,6 @@ class Result {
 	}
 	static cleanValues(output) { //Clean the array of values recovered from the Mapper, to ensure the conversion to number and correct handling of empty strings
 		return output.map(function(v) {
-			//if(v == "" || v == "Infinity") {return undefined}
-			//else {return Number(v)}
 			return Mapper.cleanValue(v);
 		});
 	}

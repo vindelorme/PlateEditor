@@ -47,6 +47,7 @@ class Plate {
 	}
 	//Static Methods
 	static styleCtx(ctx, style) { //Apply style to the canvas ctx based on the style string passed
+		ctx.setTransform(Editor.pixelRatio, 0, 0, Editor.pixelRatio, 0, 0);
 		switch(style) {
 			case "grid":
 				ctx.lineWidth = 2;
@@ -177,7 +178,6 @@ class Plate {
 		Object.values(this.Options).forEach(function(o) {o.init()});
 		let b = LinkCtrl.buttonBar([
 			{Label: "Add layer", Title: "Add a new layer to the plate", Click: function() {this.addLayer()}.bind(this)},
-			//{Label: "Unselect", Title: "Unselect all wells for all layers", Click: function() {this.resetSelection()}.bind(this)},
 		], true); //Here true is set so that the buttons are added Inline
 		let o = GetId(this.Anchors.Options);
 		o.insertAdjacentHTML("beforeend", "&nbsp;");
@@ -194,7 +194,6 @@ class Plate {
 		]);
 		out.children[0].children[3].append(v);
 		let s = LinkCtrl.buttonBar([ //Selection controls
-			//{Label: "Start selection", Title: "Set the selected well as the starting point for a group of wells", Click: function() {this.touchPad("start")}.bind(this)},
 			{Label: "Clear", Title: "Unselect all wells for all layers", Click: function() {this.resetSelection()}.bind(this)},
 		], true);
 		o = GetId(this.Anchors.Selection);
@@ -275,7 +274,7 @@ class Plate {
 		var margin = this.WellMargin;
 		this.grid();
 		if(this.Selecting) { //Interrupt the selection
-			this.select(null, {Stop: true});
+			this.select(undefined, undefined, {Stop: true});
 		}
 		this.Layers.forEach(function(L) { //redraw all layers
 			L.content(size, margin);
@@ -283,21 +282,22 @@ class Plate {
 		return this;
 	}
 	grid() { //Draw the grid layer at the current zoom level
-		var size = this.WellSize;
-		var margin = this.WellMargin;
-		var c = this.Cols;
-		var r = this.Rows;
-		var space = size + margin;
-		var G = this.Grid;
-		G.width = (c + 1) * space; //Changing the size will reset the pixels to transparent
-		G.height = (r + 1) * space;
-		var ctx = G.getContext("2d");
+		let size = this.WellSize;
+		let margin = this.WellMargin;
+		let c = this.Cols;
+		let r = this.Rows;
+		let space = size + margin;
+		let G = this.Grid;
+		let ratio = Editor.pixelRatio;
+		G.width = (c + 1) * space * Editor.pixelRatio; //Changing the size will reset the pixels to transparent
+		G.height = (r + 1) * space * Editor.pixelRatio;
+		let ctx = G.getContext("2d");
 		Plate.styleCtx(ctx, "grid");
 		ctx.font = "bold " + (Math.floor(margin / 2) * 5 + 5) + "px arial"; //Increment the size by 5px every 2 increments. Parenthesis are mandatory to get correct addition
 		for(let i=0;i<c;i++) { //Columns
+			let x = (i + 1) * space;
 			for(let j=0;j<r;j++) { //Rows
-				var x = (i + 1) * space;
-				var y = (j + 1) * space;
+				let y = (j + 1) * space;
 				ctx.strokeRect(x, y, size, size);
 				if(i == 0) { //Row header
 					ctx.fillText(Well.alphabet(j), space / 2, y + size / 2);
@@ -312,59 +312,60 @@ class Plate {
 		return this;
 	}
 	drawHighlight(w) { //Draw the highlight layer based on zoom level and hovered item w
-		var todo = [];
+		let todo = [];
 		if(w) { //Proceed with the hovered well, if defined
-			var H = this.Highlight;
-			var size = this.WellSize;
-			var margin = this.WellMargin;
-			var space = size + margin;
-			var ctx = H.getContext("2d");
+			let H = this.Highlight;
+			let size = this.WellSize;
+			let margin = this.WellMargin;
+			let space = size + margin;
+			let ctx = H.getContext("2d");
+			let r = Editor.pixelRatio
 			if(w.Row >= this.Rows || w.Col >= this.Cols) {return this} //Outside the plate boundaries
 			if(w.Row < 0) {
-				if(w.Col < 0) { //Highlight is on the top-right corner
-					var h = this.Grid.height;
-					var width = this.Grid.width; 
-					H.width = width;				  //
-					H.height = h;					  // Changing the size will reset the pixels to transparent
-					Plate.styleCtx(ctx, "highlight"); // So need to restore the style after resizing
-					ctx.strokeRect(space - 2, space - 2, width - size - 2 * margin + 4, h - size - 2 * margin + 4);
+				if(w.Col < 0) { //Highlight is on the top-left corner
+					let h = this.Grid.height;
+					let width = this.Grid.width; 
+					H.width = width;					//
+					H.height = h;						// Changing the size will reset the pixels to transparent
+					Plate.styleCtx(ctx, "highlight");	// So need to restore the style after resizing
+					ctx.strokeRect(space - 2, space - 2, (width / r) - size - 2 * margin + 4, (h / r) - size - 2 * margin + 4);
 					todo.push({Image: H, x: 0, y: 0});
 					todo.push({Image: this.Header, x: margin / 2, y: margin / 2})
 				}
 				else { //Highlight Column
-					var h = this.Grid.height;
-					H.width = size + 20;			  //
-					H.height = h;					  // Changing the size will reset the pixels to transparent
-					Plate.styleCtx(ctx, "highlight"); // So need to restore the style after resizing
-					ctx.strokeRect(8, space - 2, size + 4, h - size - 2 * margin + 4);
-					todo.push({Image: H, x: (w.Col + 1) * space - 10, y: 0});
+					let h = this.Grid.height;
+					H.width = (size + 20) * r;			//
+					H.height = h;						// Changing the size will reset the pixels to transparent
+					Plate.styleCtx(ctx, "highlight");	// So need to restore the style after resizing
+					ctx.strokeRect(8, space - 2, size + 4, (h / r) - size - 2 * margin + 4);
+					todo.push({Image: H, x: ((w.Col + 1) * space - 10) * r, y: 0});
 				}
 			}
 			else {
 				if(w.Col < 0) { //Highlight Row
-					var width = this.Grid.width;
-					H.height = size + 20;			  //
-					H.width = width;				  // Changing the size will reset the pixels to transparent
-					Plate.styleCtx(ctx, "highlight"); // So need to restore the style after resizing
-					ctx.strokeRect(space - 2, 8, width - size - 2 * margin + 4, size + 4);
-					todo.push({Image: H, x: 0, y: (w.Row + 1) * space - 10});
+					let width = this.Grid.width;
+					H.height = (size + 20) * r;			//
+					H.width = width;					// Changing the size will reset the pixels to transparent
+					Plate.styleCtx(ctx, "highlight");	// So need to restore the style after resizing
+					ctx.strokeRect(space - 2, 8, (width / r) - size - 2 * margin + 4, size + 4);
+					todo.push({Image: H, x: 0, y: ((w.Row + 1) * space - 10) * r});
 				}
 				else { //Highlight individual well
-					H.width = size + 20;  			  //
-					H.height = size + 20; 			  // Changing the size will reset the pixels to transparent
-					Plate.styleCtx(ctx, "highlight"); // So need to restore the style after resizing
+					H.width = (size + 20) * r;			//
+					H.height = (size + 20) * r;			// Changing the size will reset the pixels to transparent
+					Plate.styleCtx(ctx, "highlight");	// So need to restore the style after resizing
 					ctx.strokeRect(8, 8, size + 4, size + 4);
-					todo.push({Image: H, x: w.x(space) - 10, y: w.y(space) - 10});
+					todo.push({Image: H, x: (w.x(space) - 10) * r, y: (w.y(space) - 10) * r});
 				}
 			}
-			if(w.Col > -1) {todo.push({Image: this.Header, x: (w.Col + 1) * space, y: margin / 2})} //Highlight column header
-			if(w.Row > -1) {todo.push({Image: this.Header, x: margin / 2, y: (w.Row + 1) * space})} //Highlight row header
+			if(w.Col > -1) {todo.push({Image: this.Header, x: (w.Col + 1) * space * r, y: margin / 2})} //Highlight column header
+			if(w.Row > -1) {todo.push({Image: this.Header, x: margin / 2, y: ((w.Row + 1) * space) * r})} //Highlight row header
 		}
 		return todo;
 	}
 	highlight(e, w) { //Highlight selected well w for all layers and display the info popup
 		this.Highlighting = w;
-		var todo = this.drawHighlight(w);
+		let todo = this.drawHighlight(w);
 		this.Layers.forEach(function(l) {
 			l.highlight(todo);
 		});
@@ -372,12 +373,12 @@ class Plate {
 		return this;
 	}
 	header() { //Draw the header highlight layer at the current zoom level
-		var margin = this.WellMargin;
-		var size = this.WellSize;
-		var H = this.Header;
-		H.width = size;  //Changing the size will reset the pixels to transparent
-		H.height = size; //
-		var ctx = H.getContext("2d");
+		let margin = this.WellMargin;
+		let size = this.WellSize;
+		let H = this.Header;
+		H.width = size * Editor.pixelRatio;  //Changing the size will reset the pixels to transparent
+		H.height = size * Editor.pixelRatio; //
+		let ctx = H.getContext("2d");
 		Plate.styleCtx(ctx, "header");
 		ctx.arc(size / 2, size / 2, Math.floor(margin / 2) * 5, 0, 2 * Math.PI);
 		ctx.fill();
@@ -408,25 +409,28 @@ class Plate {
 		return this;
 	}
 	resetSelection() { //Reset selection for all the layers
-		var size = this.WellSize;
-		var margin = this.WellMargin;
+		let size = this.WellSize;
+		let margin = this.WellMargin;
 		this.Layers.forEach(function(L) {
 			L.unselect(size, margin);
 		});
 		return this;
 	}
 	startSelection(e, coords, w) { //Start the selection process
-		var B = document.createElement("canvas"); //Create 2 new canvas, one is for the selection box, the other is for the highlight of the selected wells
-		B.width = this.Grid.width;     //
+		let B = document.createElement("canvas"); //Create 2 new canvas, one is for the selection box, the other is for the highlight of the selected wells
+		let width = this.Grid.width;
+		B.width = width;			   //
 		B.height = this.Grid.height;   //
 		B.style.position = "absolute"; // Adjust dimensions and styling of first canvas, box
 		B.style.left = 0;			   //
 		B.style.top = 0;			   //
 		B.style.zIndex = 10; //To be on top of the pile
-		var S = B.cloneNode(); //Second canvas (select) is cloned from the first
+		B.style.width = (width / Editor.pixelRatio) + "px";
+		let S = B.cloneNode(); //Second canvas (select) is cloned from the first
 		S.style.zIndex = -1; //To be at the bottom
+		S.style.width = (width / Editor.pixelRatio) + "px";
 		Plate.styleCtx(B.getContext("2d"), "selectBox");
-		var ctx = S.getContext("2d");
+		let ctx = S.getContext("2d");
 		Plate.styleCtx(ctx, "selecting");
 		e.target.parentElement.append(B); //Append both canvas to the page
 		e.target.parentElement.append(S); //
@@ -551,7 +555,6 @@ class Plate {
 		return this;
 	}
 	plateMap() { //Show the plates available for the definitions
-		//let ranges = Editor.Tables.Areas.Array.filter(function(a) {return a.Type == "Range"}); //Filter the ranges
 		let ranges = Area.getRanges();
 		if(ranges.length == 0) {Editor.Console.log({Message: "No ranges defined", Gravity: "Error"}); return this}
 		Definition.formPlate(ranges);
@@ -562,7 +565,6 @@ class Plate {
 		let id = "ConMap";
 		Form.open({ //Open a form showing the map
 			ID: id,
-			//HTML: "<div id=\"" + this.Anchors.LayerSelect + "\" style=\"float: left; margin-right: 20px\"></div><div style=\"overflow: auto;margin-right: 5px\"></div>",
 			HTML: "<div id=\"" + this.Anchors.LayerSelect + "\" style=\"margin-bottom: 10px\"></div><div style=\"overflow: auto;\"></div>",
 			Title: "Concentration map",
 			Size: 700,
@@ -600,7 +602,7 @@ class Plate {
 		return this;
 	}
 	untag() { //Untag the selected wells
-		var I = {
+		let I = {
 			Keep: this.Options.KeepSelected.getValue(),
 			Size: this.WellSize,
 			Margin: this.WellMargin,
@@ -624,8 +626,7 @@ class Plate {
 		return this;
 	}
 	tagConc(value, unit) { //Tag the concentration given in the selected wells
-		var I = {
-			//Value: Decimal.format(value, this.Options.Digits.Selected),
+		let I = {
 			Value: value,
 			Digit: this.Options.Digits.Selected,
 			Unit: unit,

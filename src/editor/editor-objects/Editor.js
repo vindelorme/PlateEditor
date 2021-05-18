@@ -6,6 +6,7 @@ class Editor {
 	//Static Methods
 	static init() { //Initialize the editor. This generates all the controls and buttons
 		this.Root = "Editor";
+		this.pixelRatio = 2; //Provides better resolution for the canvas
 		let menuRoot = this.Root + "_Menu";
 		let mainRoot = this.Root + "_Main";
 		let popupRoot = this.Root + "_Popup";
@@ -157,12 +158,12 @@ class Editor {
 		GetId(this.Anchors.Menu.Results).previousSibling.append(LinkCtrl.buttonBar([
 			{Label: "Add results", Icon: {Type: "New", Space: true}, Title: "Attach new results file to the plate layout", Click: function() {this.newResult()}.bind(this)},
 			{Label: "Edit", Title: "Edit the selected result", Icon: {Type: "Edit", Space: true}, Click: function() {this.editResult()}.bind(this)},
-			//{Label: "Pairing", Title: "Tools for pairing of result and definition plates", Click: function() {this.pairing()}.bind(this)},
+			{Label: "Pairing", Title: "Tools for pairing of result and definition plates", Click: function() {this.pairing()}.bind(this)},
+			//{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
+		]));
+		GetId(this.Anchors.Menu.Results).previousSibling.append(LinkCtrl.buttonBar([
 			{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
 		]));
-		/*GetId(this.Anchors.Menu.Results).previousSibling.append(LinkCtrl.buttonBar([
-			{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
-		]));*/
 		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
 			{Label: "Controls", Title: "Aggregate data for the controls defined in the layout and compute Z-factors", Click: function() {this.Report("zFactor")}.bind(this)},
 			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.Report("aggregate")}.bind(this)},
@@ -478,7 +479,6 @@ class Editor {
 // DEFINITION-RELATED METHODS
 //***************************
 	static definitions() { //Edition of the definitions
-		//let ranges = this.Tables.Areas.Array.filter(function(a) {return a.Type == "Range"}); //Filter the ranges
 		let ranges = Area.getRanges();
 		if(ranges.length == 0) {this.Console.log({Message: "No ranges defined", Gravity: "Error"}); return this}
 		Definition.formEdit(ranges);
