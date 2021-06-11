@@ -141,7 +141,8 @@ class Report_Aggregate extends Report {
 		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
 		let o = {Items: 0, Areas: this.UI.A.Array, Params: []} //Output object containing the data for one plate
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
-			if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
+			//if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
+			if(p.Selected) { //This parameter is selected and numeric type, continue
 				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex});
 				o.Areas.forEach(function(a) { //For each area
 					a.Values.push([]); //Create empty arrays to receive the values
@@ -234,7 +235,7 @@ class Report_Aggregate extends Report {
 		let running = 0;
 		while(current.done == false && this.Cancel == false) { //Do this until the plate counter is exhausted or the user cancel the action
 			let currentPlate = current.value; //Current plate to analyze
-			let section = Report.getBloc(this, this.Blocs[0].Name).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Average", "SD", "CV (%)", "N"], TableType: "Inner"}); //Get the first section available. All sections share the data so we don't have to test for each of them
+			let section = Report.getBloc(this, this.Blocs[this.FirstBlocIndex].Name).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Average", "SD", "CV (%)", "N"], TableType: "Inner"}); //Get the first section available. All sections share the data so we don't have to test for each of them
 			if(section.hasData(0, "Plate", currentPlate) == false) { //If the values for this plate are not already logged, process it
 				let data = await this.getValues(currentPlate)
 				let stats = this.processValues(data, currentPlate); //Display the individual values and compute the stats

@@ -100,6 +100,7 @@ class Report {
 			case "zFactor": return new Report_Controls(o);
 			case "Aggregate": return new Report_Aggregate(o);
 			case "Grouped": return new Report_Grouped(o);
+			case "Hits": return new Report_Hits(o);
 			default: return new Report(o);
 		}
 	}
@@ -170,10 +171,23 @@ class Report {
 		return param.ResultIndex + ". " + param.Name;
 	}
 	//Getter and setter
-	get Result() {
+	get Result() { //Get the result file currently selected
 		let r = this.Results.Selected[0];
 		if(r === undefined) {this.Results.setValue([0])}
 		return this.Results.Selected[0];
+	}
+	get FirstBlocIndex() { //For the result file selected, get the index of the first bloc containing its data
+		let start = (this.Results.SelectedIndices[0] + 1) + ". "; //The start of the name for all the parameters of the selected result file
+		let found = false;
+		let i = 0;
+		let blocs = this.Blocs;
+		let l = blocs.length;
+		while(!found && i<l) {
+			if(blocs[i].Name.startsWith(start)) {found = true}
+			else {i++}
+		}
+		if(found) {return i}
+		else {return undefined}
 	}
 	get Params() {
 		return this.Result.Parameters;

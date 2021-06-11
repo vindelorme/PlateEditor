@@ -220,7 +220,7 @@ class Report_Controls extends Report {
 		let running = 0;
 		while(current.done == false && this.Cancel == false) { //Do this until the plate counter is exhausted or the user cancel the action
 			let currentPlate = current.value.toString(); //Current plate to analyze. Should always be used as a text, force it here for generic index
-			let section = Report.getBloc(this, this.Blocs[0].Name).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Z'", "Window"]}); //Get the first section available. All sections share the data so we don't have to test for each of them
+			let section = Report.getBloc(this, this.Blocs[this.FirstBlocIndex].Name).getSection("Plate Summary", {Summary: true, Tables: tables, Headers: ["Plate", "Z'", "Window"]}); //Get the first section available. All sections share the data so we don't have to test for each of them
 			if(section.hasData(0, "Plate", currentPlate) == false) { //If the values for this plate are not already logged, process it
 				let data = await this.getControlValues(currentPlate); //Collect values for this plate
 				let stats = this.processValues(data, currentPlate); //Display the individual values and compute the stats
