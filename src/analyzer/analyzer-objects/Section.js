@@ -112,6 +112,7 @@ class Section {
 	hasData(tableIndex, ColumnName, entry) { //For the summary section, check if the entry exists in the specified table
 		let found = false;
 		let t = this.Tables[tableIndex];
+		if(t === undefined) {return false} //Table does not exist, so the entry is sure not to exist too
 		let c = this.Headers.indexOf(ColumnName);
 		if(c == -1) {return false} //Header with this name not found
 		let val = t.Columns[c].Values;

@@ -38,7 +38,7 @@ gulp.task("build", function(cb) {
 	cb();
 });
 gulp.task("release", function(cb) {
-	let folders = ["dependencies", "dist", "images", "examples"];
+	let folders = ["dependencies", "dist", "images"];
 	let stream = mergeStream();
 	folders.forEach(function(f) {
 		stream.add(

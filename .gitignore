@@ -1,1 +1,3 @@
 *.ini
+/dist
+/node_modules
