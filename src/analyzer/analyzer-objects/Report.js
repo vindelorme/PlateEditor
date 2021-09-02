@@ -293,6 +293,7 @@ class Report {
 				if(I && I.Log) {
 					val = Math.log10(val);
 					if(I.Shift) {val += Number(elt.getAttribute("shift"))} //Shift to the higher unit
+					elt.setAttribute("logvalue", val);
 				}
 				if(val != "" && (isNaN(val) == false)) { //If convertion to a number falls into NaN, it means the value is a text, so leave it as it is
 					elt.innerHTML = Analyzer.roundNb(val);
