@@ -117,19 +117,38 @@ class Reporter {
 		});
 		return output;
 	}
-	static zFactor(controls/*, results*/) { //Compute z-score for the result file passed, using the controls provided
-		window.zFactor = {Controls: this.combination(controls, {Conc: true, Tags: true})/*, Results: results*/}
-		this.openReport("", {Title: "Control Report", /*FileName: result.Name,*/ Method: "zFactor"});
+	static zFactor(controls) { //Compute z-score for the result file passed, using the controls provided
+		window.zFactor = {
+			Controls: this.combination(controls, {Conc: true, Tags: true}),
+		}
+		this.openReport("", {Title: "Control Report", Method: "zFactor"});
 	}
-	static aggregate(areas/*, results*/) { //Compute stats for the result file passed, using the areas provided
+	static aggregate(areas) { //Compute stats for the result file passed, using the areas provided
 		areas.R.forEach(function(range) {
 			areas.A = areas.A.concat(range.Values); //Concat all individual rangeIndex to the areas
 		});
-		window.Aggregate = {Combinations: this.combination({A: areas.A}, {Conc: true, Tags: true})/*, Results: results*/, Ranges: areas.R}
-		this.openReport("", {Title: "Column Report", /*FileName: result.Name,*/ Method: "Aggregate"});
+		window.Aggregate = {
+			Combinations: this.combination({A: areas.A}, {Conc: true, Tags: true}),
+			Ranges: areas.R,
+		}
+		this.openReport("", {Title: "Column Report", Method: "Aggregate"});
 	}
-	static grouped(areas, conc/*, results*/) { //Compute stats for the result file passed, using the areas provided and organizing data as two-entry tables
-		window.Grouped = {Areas: areas.A, Conc: conc/*, Results: results*/, Ranges: areas.R, Definitions: areas.D}
-		this.openReport("", {Title: "Grouped Report", /*FileName: result.Name,*/ Method: "Grouped"});
+	static grouped(areas, conc) { //Compute stats for the result file passed, using the areas provided and organizing data as two-entry tables
+		window.Grouped = {
+			Areas: areas.A,
+			Conc: conc,
+			Ranges: areas.R,
+			Definitions: areas.D,
+		}
+		this.openReport("", {Title: "Grouped Report", Method: "Grouped"});
+	}
+	static hits(controls, areas, layout) { //Finds the hits above the given thresholds
+		window.Hits = {
+			Controls: this.combination(controls, {Conc: true, Tags: true}),
+			Layout: layout,
+			Ranges: areas.R,
+			Definitions: areas.D,
+		}
+		this.openReport("", {Title: "Hit Selection", Method: "Hits"});
 	}
 }

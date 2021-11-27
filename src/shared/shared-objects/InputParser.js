@@ -76,18 +76,18 @@ class InputParser {
 		return o;
 	}
 	processRow(row, parser, f, o) { //Process the incoming row from the parser
-		row = this.cleanRow(row, o);
-		if(row) { //The row is valid
+		let clean = this.cleanRow(row, o);
+		if(clean) { //The row is valid
 			if(o.Selected == -1) { //First selected row, prepare the header
-				this.header(row, o); //Prepare the header
+				this.header(clean, o); //Prepare the header
 				if(o.NoHeaders || this.FirstParsed == false || o.ApplyToHeader) { //In special cases, this row is processed normally and we move to the next
-					f(row, 0, parser, o);
+					f(clean, 0, parser, o);
 					o.Selected = 1;
 				}
 				else {o.Selected = 0} //In normal cases ignore the header and the next row will be the first row of data
 			}
 			else {
-				f(row, o.Selected, parser, o);
+				f(clean, o.Selected, parser, o);
 				o.Selected++;
 			}
 		}
@@ -99,7 +99,7 @@ class InputParser {
 			let row = [];
 			let dataFound = false;
 			for(let i = o.FirstCol; i < o.LastCol; i++) { //Go through the data and check for empty values
-				if(data[i] === undefined || data[i] == "") {row.push("")}
+				if(data[i] === undefined || data[i] === "") {row.push("")}
 				else { //Value found, push it
 					row.push(data[i]);
 					dataFound = true; //At least one value found
@@ -216,7 +216,7 @@ class InputParser {
 		}
 		row.forEach(function(c, j) { //For each value
 			out += "<td>"
-			if(c == "") {out += InputParser.highlight("&Oslash;")}
+			if(c === "") {out += InputParser.highlight("&Oslash;")}
 			else {out += c}
 			out += "</td>";
 		});

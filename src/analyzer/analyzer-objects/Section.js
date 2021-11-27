@@ -8,7 +8,7 @@ class Section {
 		this.Name = I.Name; //Internal name
 		this.TableType = (I.TableType || "Simple"); //Defines the table type to let the analyzer know how to export it. Values can be [Simple, Inner]
 		this.Summary = I.Summary; //Whether this section contains a summary table
-		if(this.Summary) { //In this case, keeping the values computed facilitates the creation and maintenance of the summary table
+		if(this.Summary !== undefined) { //In this case, keeping the values computed facilitates the creation and maintenance of the summary table
 			this.Tables = [];
 			this.Headers = I.Headers;
 			I.Tables.forEach(function(t, i) { //Array of object with Label property
@@ -55,7 +55,7 @@ class Section {
 	HTML(title) { //Prepare the inner html for a section
 		let html = "";
 		html += "<fieldset><legend>" + title + "</legend><div class=\"Section_Controls\"></div><div id=\"" + this.ID + "\" class=\"Section\">";
-		if(this.Summary) {
+		if(this.Summary !== undefined) {
 			html += "<div>"; //Wrapping div
 			this.Tables.forEach(function(t) {
 				html += "<div id=\"" + t.ID + "\" style=\"float: left;border: 1px solid darkred;border-radius: 5px;padding: 5px; margin: 5px\"></div>";
@@ -101,6 +101,42 @@ class Section {
 		}
 		return this;
 	}
+	initTable(tableIndex, options, I) { //Initialize the table
+		let t = this.Tables[tableIndex];
+		let html = "";
+		if(I) {
+			if(I.Title) {html += "<p class=\"Title\">" + I.Title + "</p>"}
+			if(I.WaitMsg) {html += I.WaitMsg}
+		}
+		html += "<table class=\"OuterTable\">";
+		html += "<tr><td></td>"; //Header row
+		this.Headers.forEach(function(h) {
+			html += "<th>" + h + "</th>";
+		});
+		html += "</tr><tr><td></td>"; //Main row that will hold all the innerTables
+		let style = " style=\"";
+		if(options.Collapse.getValue()) {
+			let row = options.Rows.getValue();
+			style += "max-height: " + Analyzer.divHeight(row) + "; ";
+		}
+		this.Headers.forEach(function(h, i) {
+			html += "<td class=\"Border\" style=\"vertical-align: top;\"><div class=\"InnerTable_Wrapper\"" + style;
+			html += "overflow-y: scroll\" onmouseenter=\"Analyzer.scrollActive = " + i;
+			html += "\" onscroll=\"Analyzer.syncScrolling()\"><table class=\"InnerTable\"></table></div></td>";
+		});
+		html += "</tr>";
+		GetId(t.ID).innerHTML = html;
+		return this;
+	}
+	addRow(tableIndex, newRow, types) { //Add a row in the table corresponding to the index given
+		let t = GetId(this.Tables[tableIndex].ID);
+		let coll = t.getElementsByClassName("InnerTable"); //html collection of all columns
+		newRow.forEach(function(r, i) {
+			let row = coll[i].insertRow();
+			row.innerHTML = Analyzer.cellForValue(r, {Type: types[i]});
+		});
+		return this;
+	}
 	hideAllTables() { //Hide all tables for this summary section
 		if(this.Summary) {
 			this.Tables.forEach(function(t) {
@@ -124,18 +160,47 @@ class Section {
 		}
 		return found;
 	}
+	resolveNames(I) { //For this section, resolve the names for the plate whose values are transferred, by looping the collection of resolvable elements and resolving as needed
+		let sectionID = GetId(this.ID);
+		let div = sectionID.getElementsByClassName("ResolveStatus")[0]; //The div for the status
+		if(I.Count == 0) { //This is the first pass, use it to spawn the stop button and display spans
+			let b = LinkCtrl.button({Label: "Cancel", Click: function() {this.Stop = true}.bind(I.Report), Title: "Click here to stop the name resolution process"});
+			div.innerHTML = "<span></span><span></span>&nbsp;"; //Add spans for the text
+			div.append(b); //Add the cancel button
+			div.children[0].innerHTML = "Resolving range names, please wait... "; //Update the text msg
+		}
+		else { //Update the remaining count
+			div.children[1].innerHTML = "( Plate " + I.Count + " / " + I.Total + ")&nbsp;"; //Update the plate count msg
+		}
+		let coll = sectionID.getElementsByClassName("Resolvable"); //The HTMLcollection of elements to resolve in this section. Recall it each time, because the number of element remaining will decrease after each turn
+		let l = coll.length;
+		for(let i=0;i<l;i++) { //Travel the collection to update the data
+			let c = coll[i];
+			let rangeName = c.getAttribute("rangename");
+			if(rangeName == I.Range.Name) { //Matching range
+				let rowIndex = c.parentElement.parentElement.rowIndex; //Go back to the tr to get the index of this row
+				let plate = sectionID.getElementsByClassName("InnerTable")[1].rows[rowIndex].innerText; //Recover the plate name
+				if(plate == I.Plate) { //Matching plate
+					let well = JSON.parse(c.getAttribute("well")); //Recover a pseudo-well object
+					let newName = I.Names[well.Index];
+					if(newName !== undefined && newName !== null && newName.length > 0) {c.innerHTML = newName} //Update the generic name with the resolved one, if it exists
+					//c.innerHTML = I.Names[well.Index]; //Update the generic name with the resolved one
+				}
+			}
+		}
+		return this;
+	}
 	export(I) { //Export the table data of this section
 		let tables = Section.getTables(this);
 		let l = tables.length;
 		let save = Section.fileHeader(this);
-		let title = "";
+		let title = undefined;
 		for(let i=0; i<l; i++) {
 			let t = tables[i];
-			if(i == 0) {title = t.previousSibling.innerText} //The first table always has a title
+			if(i == 0 && t.previousSibling !== null) {title = t.previousSibling.innerText} //The first table always has a title
 			else { //For the following tables, it depends
 				save += "\n\n"; //Separator between tables
 				if(this.TableType == "Inner") {title = t.previousSibling.innerText} //In this case, each table has a header
-				else {title = undefined} //No need of title otherwise
 			}
 			save += Analyzer.tableToString(t, {Title: title, TableType: this.TableType});
 		}

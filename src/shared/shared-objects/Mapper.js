@@ -279,7 +279,7 @@ class Mapper {
 		return o.Mapper.scan(o, I, output);
 	}
 	static cleanValue(v) { //Clean the value recovered from the Mapper, to ensure smooth conversion to a number and correct handling of empty/crashing strings
-		if(v == "" || v == "Infinity") {return undefined}
+		if(v === "" || v === "Infinity") {return undefined}
 		else {return Number(v)}
 	}
 	static scanMinMax(o, row) { //Evaluate Min/Max and update the properties for the object passed

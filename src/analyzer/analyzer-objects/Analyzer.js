@@ -32,7 +32,7 @@ class Analyzer {
 		return width + "em";
 	}
 	static noData() { //The string used to indicate this cell has no data
-		return "<span class=\"warning\">&Oslash;</span>";
+		return "<span class=\"Warning\">&Oslash;</span>";
 	}
 	static header(o) { //Return the html header for the row/col object provided
 		if(o.Unit) {
@@ -62,11 +62,11 @@ class Analyzer {
 		let inner = v;
 		let value = "";
 		let title = "";
-		if(v === "") {inner = this.noData()} //Mind the type equality, because 0 == "" evaluates to true
+		if(v === "" || v === undefined) {inner = this.noData()} //Mind the type equality, because 0 == "" evaluates to true
 		if(I) { //Look the options
 			if(I.Class) {c += I.Class + " "}
 			if(I.Border && I.Index > 0) {c += "BorderLeft "}
-			if(I.Type == "#" && v !== "") { //Number should use the value placeHolder
+			if(I.Type == "#" && v !== "" && v !== undefined) { //Number should use the value placeHolder
 				inner = this.roundNb(v);
 				c += "Value_PlaceHolder";
 				value = " value=\"" + v + "\"";
@@ -74,7 +74,7 @@ class Analyzer {
 			if(I.Title) {title = " title=\"" + I.Title + "\""}
 			if(I.ReturnLength) {
 				let html = "<td" + c + "\"" + value + title + ">" + inner + "</td>";
-				if(v === "") {return {HTML: html, Length: 2}}
+				if(v === "" || v === undefined) {return {HTML: html, Length: 2}}
 				else {
 					if(inner.length === undefined) { //In case the value is a number that we want to treat as text
 						return {HTML: html, Length: inner.toString().length}
@@ -108,7 +108,7 @@ class Analyzer {
 		let style = "";
 		if(options.Collapse.getValue()) {
 			let row = options.Rows.getValue();
-			style =  " style=\"max-height: " + this.divHeight(row);
+			style = " style=\"max-height: " + this.divHeight(row);
 			if(array.length <= row) {style += "; overflow-y: unset\""}
 			else {style += "; overflow-y: scroll\""}
 		}
@@ -284,7 +284,7 @@ class Analyzer {
 					txt += this.innerRowToString(rows[1]) + "\n"; //The tricky part is to export correctly the inner tables
 					start = 2; //The footer part is straightforward
 				//FALL-THROUGH
-				case "Simple": 
+				case "Simple": case "Mixed":
 					for(let i=start; i<r; i++) { //Prepare the output
 						if(rows[i].style.display != "none") { //Ignore hidden rows
 							if(i > start) {txt += "\n"}
@@ -305,7 +305,8 @@ class Analyzer {
 		let cells = row.cells;
 		let c = cells.length;
 		let format = (this.Report.Options.ExportFormat.getValue() == 1); //true means use the formatted data
-		let log = this.Report.Options.LogScale.getValue();
+		let log = undefined;
+		if(this.Report.Options.LogScale !== undefined) {log = this.Report.Options.LogScale.getValue()}
 		for(let j=0; j<c; j++) {
 			if(j > 0) {out += "\t"}
 			out += this.valueFromCell(cells[j], format, log);
@@ -320,7 +321,8 @@ class Analyzer {
 	}
 	static innerRowToString(row, I) { //Convert a DOM row table containing an innerTable with values into a string
 		let format = (this.Report.Options.ExportFormat.getValue() == 1); //true means use the formatted data
-		let log = this.Report.Options.LogScale.getValue();
+		let log = undefined;
+		if(this.Report.Options.LogScale !== undefined) {log = this.Report.Options.LogScale.getValue()}
 		let start = 1;
 		if(I && I.Start) {start = I.Start}
 		let inner = "";
@@ -353,7 +355,8 @@ class Analyzer {
 	}
 	static groupedTableToString(table) { //Convert a DOM grouped table into a string
 		let format = (this.Report.Options.ExportFormat.getValue() == 1); //true means use the formatted data
-		let log = this.Report.Options.LogScale.getValue();
+		let log = undefined;
+		if(this.Report.Options.LogScale !== undefined) {log = this.Report.Options.LogScale.getValue()}
 		let txt = "";
 		let rows = table.rows;
 		let aggreg = this.Report.UI.DataView.Selected; //Data representation will depend on this factor

@@ -2,7 +2,7 @@
 // REPORT object - Holds the values and controls available to analyze the data
 //****************************************************************************
 class Report {
-	constructor(o) {
+	constructor(o, I) {
 		this.Title = o.Title;
 		this.Anchors = {
 			Output: "Output",
@@ -19,6 +19,7 @@ class Report {
 		html += "<div id=\"" + this.Anchors.Menu + "\"></div>";
 		html += "<div id=\"" + this.Anchors.Output + "\"></div>"
 		GetId("Main").innerHTML = html;
+		this.ResolvedNames = []; //Array to collect the names for the definition plates currently selected 
 		this.Results = new RespTable({ //RespTable object controling the available result files
 			ID: this.Anchors.Results,
 			Array: window.opener.Results.map(function(r) {r.LoggedPlate = 0; return r}), //On init, set the logged plate property to 0 for each result
@@ -70,13 +71,16 @@ class Report {
 			CV: LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Label: "Show CV", Default: false, Chain: {Index: 3, Last: true}, Change: function(v) {
 				this.refresh("CV", {Show: v});
 			}.bind(this), Title: "Tick to show the coefficient of varation (CV, %) for the data"}),
-			LogScale: LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Label: "Log Scale", Default: false, Chain: {Index: 4, NewLine: true}, Change: function(v) {
+			ExportFormat: LinkCtrl.new("Radio", {ID: this.Anchors.Export, Default: 0, Label: "Export values", List: ["Raw", "Displayed"], Title: "Controls whether the exported data should be as they appear in the file or after calculation (Raw), or as they appear in the table with the decimal formatting applied (Displayed)"}),
+		}
+		//console.log(I);
+		if(I && I.Options == "full") {
+			this.Options.LogScale = LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Label: "Log Scale", Default: false, Chain: {Index: 4, NewLine: true}, Change: function(v) {
 				this.refresh("Log");
-			}.bind(this), Title: "Tick to show the concentration data in log scale"}),
-			Shift: LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Label: "Shift unit", Default: false, Chain: {Index: 5, Last: true}, Change: function(v) {
+			}.bind(this), Title: "Tick to show the concentration data in log scale"});
+			this.Options.Shift = LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Label: "Shift unit", Default: false, Chain: {Index: 5, Last: true}, Change: function(v) {
 				this.refresh("Log");
-			}.bind(this), Title: "Tick to shift the concentration data to their closest parent value (i.e. M or g/mL) when using the log scale"}),
-			ExportFormat: LinkCtrl.new("Radio", {ID: this.Anchors.Export, Default: 0, Label: "Export values", List: ["From file", "Displayed"], Title: "Controls wheter the exported data should be as they appear in the file (From file), or as they appear in the table (Displayed)"}),
+			}.bind(this), Title: "Tick to shift the concentration data to their closest parent value (i.e. M or g/mL) when using the log scale"});
 		}
 		this.UI = { //Container for specific LinkCtrl elements
 			Plate: LinkCtrl.new("Select", {ID: this.Anchors.ResultPlate, Default: 0, List: [], Label: "Plate", Change: function(index) {
@@ -99,8 +103,8 @@ class Report {
 		switch(o.Method) {
 			case "zFactor": return new Report_Controls(o);
 			case "Aggregate": return new Report_Aggregate(o);
-			case "Grouped": return new Report_Grouped(o);
-			case "Hits": return new Report_Hits(o);
+			case "Grouped": return new Report_Grouped(o, {Options: "full"});
+			case "Hits": return new Report_Hits(o, {Options: "minimum"});
 			default: return new Report(o);
 		}
 	}
@@ -132,7 +136,7 @@ class Report {
 		let id = "Report_Mask";
 		Form.open({
 			ID: id,
-			HTML: "<p><span class=\"warning\">Parsing in progress, please wait...<span></p><p>Processing plate <span id=\"Mask_PlateNumber\">1</span> / " + plates + "</p>",
+			HTML: "<p><span class=\"Warning\">Parsing in progress, please wait...<span></p><p>Processing plate <span id=\"Mask_PlateNumber\">1</span> / " + plates + "</p>",
 			Title: "Analysis in progress...",
 			Buttons: [
 				{Label: "Abort", Click: function() {report.cancel()}}
@@ -173,8 +177,11 @@ class Report {
 	//Getter and setter
 	get Result() { //Get the result file currently selected
 		let r = this.Results.Selected[0];
-		if(r === undefined) {this.Results.setValue([0])}
-		return this.Results.Selected[0];
+		if(r === undefined) {
+			this.Results.setValue([0]);
+			return this.Results.Selected[0];
+		}
+		else {return r}
 	}
 	get FirstBlocIndex() { //For the result file selected, get the index of the first bloc containing its data
 		let start = (this.Results.SelectedIndices[0] + 1) + ". "; //The start of the name for all the parameters of the selected result file
@@ -200,6 +207,27 @@ class Report {
 		return this;
 	}
 	do() {} //Do the job. Each child report has its own implementation of what to do
+	prepareDefinition() { //Prepare the controls needed to change the definition plates out of the ranges available
+		GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>"); //Append the html to host the definitions
+		this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
+			let d = r.Definition;
+			if(d !== undefined) {
+				let sel = LinkCtrl.new("Select", {ID: "Definitions_Select", NewLine: true, Index: i, Default: 0, List: d.PlatesID, Label: d.Area.Name, Title: "The plate to use for the resolution of the names for this range", Change: function(v) {
+					this.resolveNames(d, i).then(function(names) { //Fetch the names for the plate selected for this range
+						this.ResolvedNames[i] = names; //Update the name property for this definition
+						this.updateNames(d.Area, i); //Update the displayed names
+					}.bind(this));
+					if(v !== undefined) { //If the change is triggered by a pair setter, v will be undefined and there is no need to check the status. But if the select is changed manually by the user, need to check
+						this.pairStatus(this.UI.Plate.getValue(), {Check: true}); //Update the pair status
+					}
+				}.bind(this)});
+				if(sel.List.length > 1) {sel.NavBar = true; sel.Lookup = {Active: false} }
+				if(i > 0) {sel.Preserve = true}
+				this.UI["Definition_" + i] = sel;
+			}
+		}, this);
+		return this;
+	}
 	setPlates() { //Update the plate list to match that of the selected result; this will also trigger a pairStatus to update the pairing info
 		let ui = this.UI.Plate;
 		let plates = this.Result.PlatesID;
@@ -228,18 +256,20 @@ class Report {
 			let pairInfo = pair.getDefPlate(this.Ranges);
 			pairInfo.forEach(function(p, i) { //Loop the pairInfo
 				let ui = this.UI["Definition_" + p.RangeIndex];
-				if(I && I.Check) { //Comparison only
-					if(p.DefPlateIndex == ui.getValue()) { //OK
+				if(ui !== undefined) {
+					if(I && I.Check) { //Comparison only
+						if(p.DefPlateIndex == ui.getValue()) { //OK
+							pair.Table[i].Broken = false;
+						}
+						else { //Set as broken
+							pair.Table[i].Broken = true;
+						}
+					}
+					else { //Setter for the definition
+						ui.setValue(p.DefPlateIndex).change(); //Trigger a change to update the displayed names
 						pair.Table[i].Broken = false;
 					}
-					else { //Set as broken
-						pair.Table[i].Broken = true;
-					}
 				}
-				else { //Setter for the definition
-					ui.setValue(p.DefPlateIndex).change(); //Trigger a change to update the displayed names
-					pair.Table[i].Broken = false;
-				}	
 			}, this);
 		}
 		let O = pair.state();
@@ -250,7 +280,7 @@ class Report {
 		let id = "Bloc_" + index;
 		let bloc = new Bloc({Name: name, ID: id, File: this.Result.Name});
 		this.Blocs.push(bloc);
-		this.Output.addTab({Label: name, SetActive: true, Content: {Type: "HTML", Value: "<p>Data for Result file: " + this.Result.Name + "</p><div id=\"" + id + "\"><span class=\"warning\">Initializing the report, please wait...</span></div>"} });
+		this.Output.addTab({Label: name, SetActive: true, Content: {Type: "HTML", Value: "<p>Data for Result file: " + this.Result.Name + "</p><div id=\"" + id + "\"><span class=\"Warning\">Initializing the report, please wait...</span></div>"} });
 		return bloc.init();
 	}
 	cancel() {
@@ -295,7 +325,7 @@ class Report {
 					if(I.Shift) {val += Number(elt.getAttribute("shift"))} //Shift to the higher unit
 					elt.setAttribute("logvalue", val);
 				}
-				if(val != "" && (isNaN(val) == false)) { //If convertion to a number falls into NaN, it means the value is a text, so leave it as it is
+				if(val !== "" && (isNaN(val) == false)) { //If convertion to a number falls into NaN, it means the value is a text, so leave it as it is. Mind that 0 == "" is true so type equality required
 					elt.innerHTML = Analyzer.roundNb(val);
 				}
 			}
@@ -354,7 +384,7 @@ class Report {
 		let fileName = "ExportAll.zip";
 		Form.open({ //Open a form for feedback to the user
 			ID: id,
-			HTML: "<p id=\"" + outputID + "\"><span class=\"warning\">Preparing zip archive, please wait...</span></p>",
+			HTML: "<p id=\"" + outputID + "\"><span class=\"Warning\">Preparing zip archive, please wait...</span></p>",
 			Title: "Export data",
 			Buttons: [{Label: "Close", Click: function() {Form.close(id)}}],
 		});

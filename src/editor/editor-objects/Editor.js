@@ -78,11 +78,11 @@ class Editor {
 				onDelete: function(r) {this.deleteResult(r)}.bind(this),
 				onSelect: function(newSelect, oldSelect, newIndices, oldIndices) { //Redraw when necessary
 					if(oldSelect[0]) { //Something already selected
-						if(newIndices[0] != oldIndices[0] || newSelect[0].Validated == false) {this.ResultManager.draw(newSelect[0])} //If a different result is selected, redraw. If the result was not validated, redraw also
+						if(newIndices[0] != oldIndices[0] || newSelect[0].Validated == false) {this.ResultManager.draw(newSelect[0])} //If a different result is selected, redraw. If the result was not validated, redraw as well
 					}
 					else {this.ResultManager.draw(newSelect[0])}
 				}.bind(this),
-				onUpdate: function() {this.Report()}.bind(this),
+				//onUpdate: function() {this.report()}.bind(this),
 			}),
 		}
 		this.Controls = {
@@ -165,9 +165,12 @@ class Editor {
 			{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
 		]));
 		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
-			{Label: "Controls", Title: "Aggregate data for the controls defined in the layout and compute Z-factors", Click: function() {this.Report("zFactor")}.bind(this)},
-			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.Report("aggregate")}.bind(this)},
-			{Label: "Grouped Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as two-entry tables", Click: function() {this.Report("grouped")}.bind(this)},
+			{Label: "Controls", Title: "Aggregate data for the controls defined in the layout and compute Z-factors", Click: function() {this.report("zFactor")}.bind(this)},
+			{Label: "Hits", Title: "Gather wells with parameter values above the given thresholds. Requires controls defined in the plate", Click: function() {this.report("hits")}.bind(this)},
+		]));
+		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
+			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.report("aggregate")}.bind(this)},
+			{Label: "Grouped Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as two-entry tables", Click: function() {this.report("grouped")}.bind(this)},
 		]));
 		return this;
 	}
@@ -574,16 +577,17 @@ class Editor {
 //*************************
 // ANALYSIS-RELATED METHODS
 //*************************
-	static Report(type) { //Update the window.Results data and Open the desired report page
+	static report(type) { //Update the window.Results data and Open the desired report page
 		let results = this.Tables.Results.Array.filter(function(r) {return r.Validated}); //Only validated results
 		window.Results = results;
-		if(type === undefined) {return this} //No need to do more in that case
+		//if(type === undefined) {return this} //No need to do more in that case
 		if(this.Plate === undefined) {this.Console.log({Message: "No plate defined", Gravity: "Error"}); return this} //Check that a plate exist
 		if(results.length == 0) {this.Console.log({Message: "No result file available", Gravity: "Error"}); return this} //Check that results exist
 		switch(type) { //Open the desired report page
 			case "zFactor": return this.zFactor();
 			case "aggregate": return this.aggregate();
 			case "grouped": return this.grouped();
+			case "hits": return this.hits();
 		}
 	}
 	static zFactor() { //Compute and report z-factor across all plates
@@ -603,6 +607,14 @@ class Editor {
 		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
 		let conc = this.Plate.getConc(); //Loop the plate to get the conc categorized per unit
 		Reporter.grouped(areas, conc);
+		return this;
+	}
+	static hits() { //Compute and report hits above the threshold for all plates
+		let controls = Area.getControls(this.Tables.Areas.Array);
+		if(controls.Count == 0) {this.Console.log({Message: "No controls defined in the current layout", Gravity: "Error"}); return this}
+		let areas = Area.getAreas(this.Tables.Areas.Array);
+		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
+		Reporter.hits(controls, areas, Plate.flatten(this.Plate));
 		return this;
 	}
 }

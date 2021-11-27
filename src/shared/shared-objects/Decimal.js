@@ -35,6 +35,9 @@ class Decimal {
 		return this;
 	}
 	//Static methods
+	static isNumeric(v) { //Returns a boolean to indicate if the value is text or number
+		return (v !== undefined && v !== null && v.toFixed !== undefined && isNaN(v) == false);
+	}
 	static sgnToText(d) { //Return the txt string corresponding to the sign for the decimal object d
 		if(d.Sgn < 0) {return "-"}
 		else {return ""}
@@ -52,18 +55,20 @@ class Decimal {
 			if(I.Loose) {array = [1, 2, 4, 5, 10]} //In case a looser approximation is needed
 		}
 		if(d.Sgn == -1) {above = !above} //In this case, should switch above/below to its opposite
-		var digit = d.Value / Math.pow(10, p); //The root digits
+		let digit = d.Value / Math.pow(10, p); //The root digits
 		if(digit > 10) { //Bring it back down between 0 and 10
 			offset = 10;
 			digit -= offset;
 		}
-		var op = function(a, b) {return(a <= b)} //The comparison function
+		let op = function(a, b) {return(a <= b)} //The comparison function
+		if(I && I.Strict) {op = function(a, b) {return a < b}} //Strict inequality
 		if(above) { //Nice number should be bigger
 			array.reverse(); //This ensures the "smallest among the bigger" will be used
 			op = function(a, b) {return(a >= b)}
+			if(I && I.Strict) {op = function(a, b) {return a > b}} //Strict inequality
 		}
-		array.forEach(function(a) {if(op(a, digit)) {nice = a}}); //Compare the root digits with all of the nice numbers avaliable and pick the closest one
-		var niceNumber = d.Sgn * (offset + nice) * Math.pow(10, p); //Restore the nice number to the right power and sign
+		array.forEach(function(a) {if(op(a, digit)) {nice = a}}); //Compare the root digits with all of the nice numbers available and pick the closest one
+		let niceNumber = d.Sgn * (offset + nice) * Math.pow(10, p); //Restore the nice number to the right power and sign
 		if(I && I.ReturnAsObject) {return(new Decimal(niceNumber))}
 		else {return niceNumber}
 	}
@@ -71,9 +76,16 @@ class Decimal {
 		if(a == 0 || b == 0) {return 0} //Trivial, but problem of power with these cases that need to be excluded
 		let A = new Decimal(a);
 		let B = new Decimal(b);
-		let pureResults = A.PureValue * B.PureValue; //Calculate the pure number out of the inputs
+		let pureResults = A.PureValue * B.PureValue; //Calculate the pure number out of the inputs. This has no decimals
 		let power = A.Power + A.PowerOffset + B.Power + B.PowerOffset; //Calculate the power
-		let result = pureResults * Math.pow(10, power);
+		let result = NaN;
+		if(power >= 0) {
+			result = pureResults * Math.pow(10, power); //No rounding errors in that case
+		}
+		else { //Rounding errors will ensue when multiplying, so simply shift to a division
+			result = pureResults / Math.pow(10, Math.abs(power));
+		}
+		//let result = pureResults * Math.pow(10, power);
 		if(bool) {return new Decimal(result)} //Output
 		else {return result}
 	}

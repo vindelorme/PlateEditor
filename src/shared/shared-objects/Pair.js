@@ -123,4 +123,7 @@ class Pair {
 		});
 		return this;
 	}
+	getPair(rangeName) { //Return the object data registered for this pair, for the range having the name passed 
+		return this.Table.find(function(t) {return t.RangeName == rangeName});
+	}
 }

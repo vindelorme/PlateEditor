@@ -178,12 +178,14 @@ class Definition {
 			}.bind(this),
 		});
 	}
-	static getAsPlate(d) { //For the definition object passed, return an array the size of the plate with definitions resolved for each well. Also return an array indicating tagged wells for the area
+	static getAsPlate(d, plateName) { //For the definition object passed, return an array the size of the plate with definitions resolved for each well. Also return an array indicating tagged wells for the area
 		let a = d.Area;
 		//let factor = Math.ceil(a.Tagged / a.Replicates);
+		let plate = d.PlateIndex.Selected; //Name of the plate where to look the data
+		if(plateName !== undefined) {plate = plateName}
 		let factor = a.MaxRange;
 		let args = {
-			Plate: d.PlateIndex.Selected, //Name of the plate where to look the data
+			Plate: plate,
 			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available
 			Default: "", //Default fallback if nothing found, leave it blank
 			AreaName: a.Name, //This is use when completing missing elements with generic names
@@ -224,12 +226,18 @@ class Definition {
 		this.PlateIndex.updateList(this.PlatesID).setValue(0); //Update the select element as well
 		return this;
 	}
-	item(w) { //Returns a promise that will fulfill with the value of the definition for the well object passed
+	item(w, I) { //Returns a promise that will fulfill with the value of the definition for the well object passed
 		let p = this.PlateIndex.getValue(); //The index of the plate
-		let factor = Math.ceil(this.Area.Tagged / this.Area.Replicates);
+		let plate = this.PlateIndex.Selected; //Name of the plate where to look the data
+		if(I !== undefined) { //Use provided plate data when needed
+			p = I.Index;
+			plate = I.Name;
+		}
+		//let factor = Math.ceil(this.Area.Tagged / this.Area.Replicates);
+		let factor = this.Area.MaxRange;
 		let index = p * factor + (w.RangeIndex - 1);
 		let args = {
-			Plate: this.PlateIndex.Selected, //Name of the plate where to look the data
+			Plate: plate,
 			Well: w.Index, //Index of the well where to find the data
 			RangeIndexBase0: w.RangeIndex - 1, //The desired rangeIndex, rebased to start at 0
 			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available
@@ -237,6 +245,30 @@ class Definition {
 			Column: this.Mapping[Mapper.definition().Name], //Index of the column containing the data to extract
 		}
 		return this.Mapper.find(this, args); //Return a promise that will fulfill with the value of the item
+	}
+	getPlate(plate) { //Return an array the size of the plate with definitions resolved for each well of the plate with the given name. This is a simplified, embedded version of the static getAsPlate method
+		let a = this.Area;
+		//let factor = Math.ceil(a.Tagged / a.Replicates);
+		let factor = a.MaxRange;
+		let args = {
+			Plate: plate,
+			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available
+			Default: "", //Default fallback if nothing found, leave it blank
+			AreaName: a.Name, //This is use when completing missing elements with generic names
+			Column: this.Mapping[Mapper.definition().Name], //Index of the column containing the data to extract
+			RangeIndexBase0: a.MaxRange, //Providing the maxRange ensures that the array is filled with generic items if there is not enough definitions available in the file
+			FindAll: true,
+		}
+		return new Promise(function(resolve) {
+			this.Mapper.find(this, args).then(function(array) {
+				let mode = Mapper.modeWellPlate(this.Mapping);
+				switch(mode) { //For mapping without well location, the array returned is the list of object available, that needs to be converted into an array of well
+					case "Plate": //FALL-THROUGH
+					case "Direct": array = Area.plateDefinition(a, array); //Rewrite the array to contain the definition at the correct locations
+				}
+				resolve(array);
+			}.bind(this));
+		}.bind(this));
 	}
 	previewPlate(plate) { //Chunk a piece of the definition corresponding to the selected plate and present it as a html table
 		let preview = Definition.anchors("Preview");

@@ -44,7 +44,7 @@ class Well {
 		if(col >= c) {return} //Outside plate dimensions
 		let row = Well.rowIndex(letters);
 		if(row === undefined || row >= r) {return}
-		return {Index: row * c + col, Row: row, Col: col};
+		return {Index: row * c + col, Row: row, Col: col, Name: w};
 	}
 	static rowIndex(a) { //Parse the row index for the provided string
 		if(a.length == 1) {return parseInt(a, 36) - 10}
@@ -68,6 +68,25 @@ class Well {
 		}
 		return data;
 	}
+	/*static async layoutData(well, plate) { //Return the layout data for the current well, as an array, using the provided definitions
+		let data = [""]; //Start with an empty placeholder for the area
+		if(well.Value) {data.push(well.Value, well.Unit)}
+		else {data.push("", "")} //Need to push something to conserve the right number/order in columns
+		let a = well.Area;
+		if(a) { //If an area is present
+			if(a.Type == "Range") { //Specific case for range
+				if(a.Definition) { //There is a definition attached to this range
+					data[0] = await a.Definition.item(well, plate);
+				}
+				else { //Use generic names
+					data[0] = a.Name + " #" + well.RangeIndex;
+				}
+			}
+			else {data[0] = a.Name} //The rest is straightforward
+		}
+		return data;
+	}*/
+	
 //*******************
 //SAVE & LOAD METHODS
 //*******************

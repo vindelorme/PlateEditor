@@ -40,6 +40,7 @@ legend {
 	background-color: white;
 	text-align: center;
 }
+
 .Section {
 	max-width: 72vw;
 	overflow: auto;
@@ -58,9 +59,11 @@ a {
 	color: blue;
 	cursor: pointer;
 }
-.warning {
-	font-style: italic;
-	color: tomato;
+.HitStatus {
+	padding: 5px 0 0 5px;
+}
+.ResolveStatus {
+	padding: 5px 0 5px 5px;
 }
 .good {
 	background-color: lightgreen;

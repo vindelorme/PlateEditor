@@ -161,6 +161,33 @@ class Plate {
 			else {resolve(plate.tagArea(a, I))}
 		});
 	}
+	static flatten(plate) { //Produce an array the size of the plate where the content of each well is flattened accross layers
+		let flat = []; //Output array
+		let size = plate.Rows * plate.Cols;
+		for(let i=0;i<size;i++) {
+			let content = []; //Aggregate the content across layers in an array
+			let ranges = [];
+			plate.Layers.forEach(function(l) {
+				let item = ""; //The item at this location
+				let w = l.Wells[i];
+				if(w.Area) {
+					if(w.Area.Type == "Range") {
+						item = "<span class=\"Resolvable\" well='{\"Index\": " + i + ", \"RangeIndex\": " + w.RangeIndex + "}' rangeName=\"" + w.Area.Name + "\">" + w.Area.Name + " #" + w.RangeIndex + "</span>";
+						ranges.push({Range: w.Area, RangeIndex: w.RangeIndex});
+					}
+					else {item = w.Area.Name}
+					if(w.Value !== undefined) {item += " " + Well.dose(w)}
+					content.push(item);
+				}
+			});
+			content = content.reduce(function(acc, val) { //Reduce the array into a string
+				if(acc.length > 0) {acc += "<br>"}
+				return acc += val;
+			}, ""); //Initial value is important
+			flat.push({HTML: content, Type: plate.TypeMap.Map[i], Ranges: ranges}); //Push the content to the plate-like array
+		}
+		return flat
+	}
 	//Methods
 	init() {
 		let out = GetId(this.Root);
@@ -510,7 +537,7 @@ class Plate {
 		}
 		else {GetId(pop.Area).innerHTML = ""}
 		if(w.Conc) {
-			GetId(pop.Conc).innerHTML = Well.dose(w, this.Options.Digits.getValue());
+			GetId(pop.Conc).innerHTML = Well.dose(w);
 			show = true;
 		}
 		else {GetId(pop.Conc).innerHTML = ""}
