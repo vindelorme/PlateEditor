@@ -7,7 +7,6 @@ class Report_Aggregate extends Report {
 		let source = window.opener.Aggregate;
 		source.Combinations.A.forEach(function(c) {c.Selected = true}); //Mark all areas as selected
 		this.Ranges = source.Ranges;
-		this.ResolvedNames = []; //Array to collect the names for the definition plates currently selected 
 		this.Menu.addTabs([ //Prepare the menu
 			{Label: "Areas", SetActive: true, Content: {Type: "HTML", Value: "<div style=\"max-height: 500px; overflow: auto\" id=\"Areas\"></div>"} },
 		]);
@@ -18,9 +17,9 @@ class Report_Aggregate extends Report {
 			{Label: "Unselect all", Title: "Click here to unselect all areas", Click: function() {this.UI.A.setValue([]); this.computeStats()}.bind(this)},
 			{Label: "Select all", Title: "Click here to select all areas", Click: function() {this.UI.A.selectAll(); this.computeStats()}.bind(this)},
 		]);
-		GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
+		//GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
 		GetId("Areas").parentElement.prepend(bar);
-		this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
+		/*this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
 			let d = r.Definition;
 			if(d !== undefined) {
 				let sel = LinkCtrl.new("Select", {ID: "Definitions_Select", NewLine: true, Index: i, Default: 0, List: d.PlatesID, Label: d.Area.Name, Title: "The plate to use for the resolution of the names for this range", Change: function(v) {
@@ -36,7 +35,8 @@ class Report_Aggregate extends Report {
 				if(i > 0) {sel.Preserve = true}
 				this.UI["Definition_" + i] = sel;
 			}
-		}, this);
+		}, this);*/
+		this.prepareDefinition();
 		return this;
 	}
 	//Methods
@@ -169,7 +169,7 @@ class Report_Aggregate extends Report {
 		}.bind(this));
 	}
 	waitMessage(params) { //Display a waiting message
-		let msg = "<span class=\"warning\">Parsing values, please wait...</span>";
+		let msg = "<br><span class=\"Warning\">Parsing values, please wait...</span>";
 		params.forEach(function(param, i) { //Process all parameters
 			let bloc = Report.getBloc(this, Report.blocName(param));
 			bloc.Sections.forEach(function(s) {

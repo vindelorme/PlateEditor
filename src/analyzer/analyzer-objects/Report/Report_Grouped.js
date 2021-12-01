@@ -2,30 +2,29 @@
 // REPORT_GROUPED object - A report object to display and navigate results from aggregated areas and concentrations, as 2-entry tables
 //************************************************************************************************************************************
 class Report_Grouped extends Report {
-	constructor(o) {
-		super(o);
+	constructor(o, I) {
+		super(o, I);
 		let source = window.opener.Grouped;
 		this.Areas = source.Areas.map(function(a) {a.Available = true; a.Values = [{Name: a.Name, Value: a.Name, Tags: a.Tags}]; return a}); //Mark all items as available
 		this.Ranges = source.Ranges.map(function(r) {r.Available = true; return r});
 		this.Concentrations = source.Conc.map(function(c) {c.Available = true; return c});
-		this.ResolvedNames = []; //Array to collect the names for the definition plates currently selected 
 		this.Menu.addTabs([ //Prepare the menu
 			{Label: "Data selected", SetActive: true,
 				Content: {
 					Type: "HTML",
-					Value: "<div id=\"Report_Ready\"><span class=\"warning\">Resolving definitions, please wait...</span></div>" +
+					Value: "<div id=\"Report_Ready\"><span class=\"Warning\">Resolving definitions, please wait...</span></div>" +
 					"<fieldset id=\"AddRowCol\"><div id=\"Data_Options\"></div></fieldset>" +
 					"<fieldset><legend>Rows</legend><div style=\"max-height: 500px; overflow: auto\" id=\"SelectedRows\"></div></fieldset>" +
 					"<fieldset><legend>Columns</legend><div style=\"max-height: 500px; overflow: auto\" id=\"SelectedCols\"></div></fieldset>",
 				}
 			},
 		]);
-		GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
-		this.UI.Rows = new RespTable({ID: "SelectedRows", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(I) {
-			if(I === undefined || I.Action != "Select") {this.compute()}
+		//GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
+		this.UI.Rows = new RespTable({ID: "SelectedRows", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(O) {
+			if(O === undefined || O.Action != "Select") {this.compute()}
 		}.bind(this)});
-		this.UI.Cols = new RespTable({ID: "SelectedCols", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(I) {
-			if(I === undefined || I.Action != "Select") {this.compute()}
+		this.UI.Cols = new RespTable({ID: "SelectedCols", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(O) {
+			if(O === undefined || O.Action != "Select") {this.compute()}
 		}.bind(this)});
 		this.UI.DataView = LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Avg, SD, N", "Average", "Column", "Row"], Preserve: true, Change: this.compute.bind(this),
 			Title: "Indicates how multiple values are displayed in the grouped table: arrayed in a single column or in consecutive rows; show only the average; show the average, standard deviation and number of samples"
@@ -35,7 +34,7 @@ class Report_Grouped extends Report {
 			{Label: "Add Columns", Title: "Click here to add columns of data to the summary table", Click: function() {this.addData("Cols")}.bind(this)},
 		]);
 		GetId("AddRowCol").prepend(buttons);
-		this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
+		/*this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
 			let d = r.Definition;
 			if(d !== undefined) {
 				let sel = LinkCtrl.new("Select", {ID: "Definitions_Select", NewLine: true, Index: i, Default: 0, List: d.PlatesID, Label: d.Area.Name, Title: "The plate to use for the resolution of the names for this range", Change: function(v) {
@@ -51,7 +50,8 @@ class Report_Grouped extends Report {
 				if(i > 0) {sel.Preserve = true}
 				this.UI["Definition_" + i] = sel;
 			}
-		}, this);
+		}, this);*/
+		this.prepareDefinition();
 		GetId("Output").innerHTML = "<p class=\"Note\">Add Rows and Columns of data to start</p>"; //Welcome message
 		return this;
 	}
@@ -251,7 +251,7 @@ class Report_Grouped extends Report {
 			}, this);
 		}
 	}
-	getValues(selectedPlate) { //Retrieve all the parameter values for for the selected plate, as an 2D array the size of the plate
+	getValues(selectedPlate) { //Retrieve all the parameter values for the selected plate, as a 2D array the size of the plate
 		let o = {Items: 0, Values: [], Params: []} //Output object containing the data for one plate
 		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
@@ -276,7 +276,7 @@ class Report_Grouped extends Report {
 		}.bind(this));
 	}
 	waitMessage(params) { //Display a waiting message
-		let msg = "<span class=\"warning\">Parsing values, please wait...</span>";
+		let msg = "<br><span class=\"Warning\">Parsing values, please wait...</span>";
 		params.forEach(function(param, i) { //Process all parameters
 			let bloc = Report.getBloc(this, Report.blocName(param));
 			bloc.Sections.forEach(function(s) {

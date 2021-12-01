@@ -49,7 +49,6 @@ class Report_Controls extends Report {
 		let o = {Items: 0, Neg: this.UI.N.Array, Pos: this.UI.P.Array, Params: []} //Output object containing the data for one plate
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
 			if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
-				//o.Params.push({Index: i, Name: resultIndex + ". " + p.Name}); //Ensure unicity of parameter names, even accross multiple results
 				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex}); //Ensure unicity of parameter names, even accross multiple results
 				[o.Neg, o.Pos].forEach(function(control) { //For each of the negative and positive control arrays
 					control.forEach(function(c) { //For each control
@@ -82,7 +81,7 @@ class Report_Controls extends Report {
 		}.bind(this));
 	}
 	waitMessage(params) { //Display a waiting message
-		let msg = "<span class=\"warning\">Parsing values, please wait...</span>";
+		let msg = "<br><span class=\"Warning\">Parsing values, please wait...</span>";
 		params.forEach(function(param, i) { //Process all parameters
 			let bloc = Report.getBloc(this, Report.blocName(param));
 			bloc.Sections.forEach(function(s) {
@@ -94,7 +93,7 @@ class Report_Controls extends Report {
 		let neg = this.UI.N.Selected[0];
 		let pos = this.UI.P.Selected[0];
 		if(neg === undefined && pos === undefined) {return} //Need at least one control to do something
-		let plate = this.UI.Plate.Selected;
+		let plate = this.UI.Plate.Selected.toString(); //Force string output in case of generic index
 		this.getControlValues(plate).then(function(data) { //Collect values for this plate
 			let stats = this.processValues(data, plate); //Display the individual values and compute the stats
 			let scores = this.processZscore(stats, data, plate); //Compute and display the z-factor
@@ -164,7 +163,7 @@ class Report_Controls extends Report {
 			}, this);
 			html += "</table>";
 		}, this);
-		if(enough == false) {return {HTML: "<span class=\"warning\">Select at least one negative and one positive control to calculate a Z-factor!</span>"}}
+		if(enough == false) {return {HTML: "<span class=\"Warning\">Select at least one negative and one positive control to calculate a Z-factor!</span>"}}
 		return {HTML: html, Score: todo}
 	}
 	zScoreFromStats(neg, pos) { //Compute the z score from the stats calculated from the +/- controls
