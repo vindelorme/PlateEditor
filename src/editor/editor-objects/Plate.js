@@ -188,6 +188,7 @@ class Plate {
 		}
 		return flat
 	}
+	
 	//Methods
 	init() {
 		let out = GetId(this.Root);
@@ -250,11 +251,12 @@ class Plate {
 	}
 	deleteLayer(l) { //Delete layer with provided index
 		this.Layers.splice(l,1); //Remove the layer from the array
-		var tab = this.LayerTab;
+		let tab = this.LayerTab;
 		this.Layers.forEach(function(L, i) { //Redefine index of the layers and wells
 			if(i > (l-1)) { //Only update layers above the layer to be removed
 				L.setIndex(i);
 				tab.rename(i, "Layer " + (i + 1));
+				Layer.exportControls(L); //Add the control buttons to get the layer as jpg or html
 			}
 		});
 		Editor.ResultManager.layerUpdate(); //Update the layer control
@@ -421,7 +423,9 @@ class Plate {
 		if(I.Stop) {
 			if(this.Selecting) {
 				if(I.Layer !== undefined) {
-					this.Layers[I.Layer].select(this.Selecting.Includes, this.WellSize, this.WellMargin);
+					//this.Layers[I.Layer].select(this.Selecting.Includes, this.WellSize, this.WellMargin);
+					let L = this.Layers.find(function(e) {return e.Index == I.Layer});
+					if(L !== undefined) {L.select(this.Selecting.Includes, this.WellSize, this.WellMargin)}
 				}
 				this.Selecting.Box.remove(); //Remove the 2 HTML canvas elements
 				this.Selecting.Select.remove();
@@ -482,14 +486,14 @@ class Plate {
 		}
 	}
 	drawWellsInLasso(ctx, w) { //Draw wells in lasso on the canvas context
-		var size = this.WellSize;
-		var margin = this.WellMargin;
-		var start = this.Selecting.Start;
+		let size = this.WellSize;
+		let margin = this.WellMargin;
+		let start = this.Selecting.Start;
 		this.Selecting.Includes = [];
-		var startRow = Math.min(start.Row, w.Row);
-		var startCol = Math.min(start.Col, w.Col);
-		var spanRow = Math.abs(start.Row - w.Row) + 1; //The number of rows in the lasso
-		var spanCol = Math.abs(start.Col - w.Col) + 1; //The number of cols in the lasso
+		let startRow = Math.min(start.Row, w.Row);
+		let startCol = Math.min(start.Col, w.Col);
+		let spanRow = Math.abs(start.Row - w.Row) + 1; //The number of rows in the lasso
+		let spanCol = Math.abs(start.Col - w.Col) + 1; //The number of cols in the lasso
 		let html = "R <b>";
 		if(startRow == -1) { //When a header is selected, extend the selection to the whole row
 			spanRow = this.Rows + 1;
@@ -503,11 +507,13 @@ class Plate {
 		}
 		else {html += spanCol}
 		GetId(Editor.Anchors.Popup.Select).innerHTML = html + "</b> C";
-		var hor = startCol + spanCol;
-		var ver = startRow + spanRow;
-		var x = (size + margin) * (startCol + 1);
-		var y = (size + margin) * (startRow + 1);
-		var L = this.Layers[w.Layer.Index]; //The layer currently hosting the selection process
+		let hor = startCol + spanCol;
+		let ver = startRow + spanRow;
+		let x = (size + margin) * (startCol + 1);
+		let y = (size + margin) * (startRow + 1);
+		//let L = this.Layers[w.Layer.Index]; //The layer currently hosting the selection process
+		let L = this.Layers.find(function(e) {return e.Index == w.Layer.Index});
+		if(L === undefined) {console.warn("Could not find the layer with index " + w.Layer.Index); return} //Could not find the layer
 		for(let i=startCol;i<hor;i++) { //Loop covering the wells under the lasso, col first
 			for(let j=startRow;j<ver;j++) { //then row
 				if(j == startRow) {y = (size + margin) * (startRow + 1)}
@@ -731,5 +737,8 @@ class Plate {
 			})
 		});
 		return conc;
+	}
+	getAsTxt() { //Return a string representing the tab-delimited version of the plate layout
+		
 	}
 }

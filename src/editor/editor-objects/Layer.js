@@ -356,7 +356,9 @@ class Layer {
 	}
 	setIndex(i) { //Update the Layer property of each well to the specified index
 		this.Index = i; //Update layer object property
-		GetId(this.Root).previousSibling.innerHTML = "Layer " + (i + 1); //Also change the html displayed
+		//GetId(this.Root).previousSibling.innerHTML = "Layer " + (i + 1); //Also change the html displayed
+		GetId(this.Root).previousSibling.innerHTML = "Layer " + (i + 1) + " &bull; "; //Also change the html displayed
+				
 	}
 	tagArea(a, I) { //Tag the area in selection
 		let R = I.Results; //Results of the tagging
