@@ -407,4 +407,9 @@ class Area {
 		this.DefInfo = "none";
 		return this;
 	}
+	cleanTags(layerIndex) { //Clean the tags that belongs to the layer with Index l
+		let here = this.Tags.findIndex(function(t) {return t.Layer.Index == layerIndex});
+		this.Tags.splice(here, 1);
+		return this;
+	}
 }

@@ -437,7 +437,7 @@ class Editor {
 		if(this.Plate === undefined) {return this}
 		let R = this.Plate.untag();
 		if(R.Untag == 0) {this.Console.log({Message: "No wells selected", Gravity: "Error"}); return this}
-		this.Tables.Areas.update()
+		this.Tables.Areas.update();
 		this.Console.log({Message: R.Untag + " wells untagged", Gravity: "Success"});
 		return this;
 	}

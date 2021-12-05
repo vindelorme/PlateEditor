@@ -258,6 +258,8 @@ class Plate {
 		I.Results.Ranges.forEach(function(a) { //Update impacted ranges
 			this.updateRange(a);
 		}, this);
+		Editor.Tables.Areas.update(); //Update so that the ranges have correct display
+		Editor.Tables.Areas.Array.forEach(function(a) {a.cleanTags(this.Layers[l].Index)}, this); //All areas must now delete any reference to this destroyed layer
 		this.Layers.splice(l, 1); //Remove the layer from the array
 		let tab = this.LayerTab;
 		this.Layers.forEach(function(L, i) { //Redefine index of the layers and wells
