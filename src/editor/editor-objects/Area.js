@@ -144,7 +144,8 @@ class Area {
 			t.Wells.forEach(function(w) { //Keep only essential info from wells
 				well.push(Well.save(w));
 			});
-			tags.push({Layer: t.Layer.Index, Wells: well});
+			//tags.push({Layer: t.Layer.Index, Wells: well});
+			tags.push({Layer: t.Layer.ArrayIndex, Wells: well});
 		});
 		return JSON.stringify({
 			Name: a.Name,

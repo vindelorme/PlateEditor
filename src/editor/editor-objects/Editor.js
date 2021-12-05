@@ -555,7 +555,7 @@ class Editor {
 	static pushLayout() { //Merge selected result files with layout data
 		let selected = this.Tables.Results.Selected;
 		if(this.Plate) {
-			if(selected.length > 0) {this.ResultManager.pushLayout(selected[0])}
+			if(selected.length > 0) {this.ResultManager.pushLayout(selected[0], this.Plate.Layers.length)}
 			else {this.Console.log({Message: "No result file selected", Gravity: "Error"})}
 		}
 		else {this.Console.log({Message: "No plate defined", Gravity: "Error"})}

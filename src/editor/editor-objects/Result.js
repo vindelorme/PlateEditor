@@ -169,11 +169,59 @@ class Result {
 	//**************************************************************************
 	//Works well for small files, need stream-write capabilities for bigger ones
 	//**************************************************************************
-	pushLayout(rowLimit) { //Push the result file with the layout data
+	pushLayout(rowLimit, l) { //Push the result file with the layout data
 		let aborted = false;
 		let w = this.Mapping[Mapper.well().Name];
+		let plateCol = this.Mapping[Mapper.plate().Name];
 		let plate = Editor.Plate;
-		let data = [this.Parser.Headers.concat(["Area", "Value", "Unit"])]; //Headers for the file
+		let header = this.Parser.Headers; //Headers for the file
+		for(let i=0; i<l; i++) { //For each layer
+			header = header.concat(["Area", "Value", "Unit"]); //Concat a series of column to hold the values
+		}
+		console.log(l, [header]);
+		let data = [header];
+		//
+		//THIS IS THE RIGHT WAY TO DO TO GET THE DEFINITION RESOLVED CORRECTLY AT THEIR PLATE Location
+		//BUT ALL PROMISES ARE PUSHED AT THE SAME TIME, WHICH SATURATE THE MEMORY WITH WORKERS!
+		//NEED TO STAGE THE CREATION OF WORKERS IN SMALL BATCHES 
+		//
+		/*return new Promise(function(resolve) {
+			this.Parser.stream(function(row, selected, parser) { //Stream the file to build the output
+				let here = Well.parseIndex(row[w], plate); //Location of the well
+				if(here !== undefined) { //If this well is within the plate boundary
+					data.push( //Push a promise that will fulfill with the data for the entire row 
+						new Promise(function(resolveRow) {
+							let p = []; //Array of promises
+							plate.Layers.forEach(function(l) { //Loop the layers
+								let well = l.Wells[here.Index];
+								p.push(Well.layoutData(well, row[plateCol])); //Push a promise that will resolve with the layout data at this well and layer
+							});
+							Promise.all(p).then(function(layout) { //When the layout data are recovered for all layers, concat to the row and push to output data
+								layout.forEach(function(l) {row = row.concat(l)});
+								resolveRow(row);
+							});
+						}) //No separator here, as we are in a push()
+					);
+				}
+				//***************************************************
+				//Protection for big files, until we can do better...
+				if(data.length == rowLimit) {
+					aborted = true;
+					parser.abort();
+					//console.log("Too many rows, Aborted");
+				}
+				//***************************************************
+			}.bind(this), function() { //Parsing Complete
+				//console.log("Stream complete");
+				Promise.all(data).then(function(out) { //Wait for all rows to complete then resolve
+					resolve({Aborted: aborted, Data: out});
+				}); 
+			});
+		}.bind(this));*/
+		//
+		//RESOLUTION OF DEFINITION LIMITED TO THE SELECTED PLATE!
+		//NOT GOOD FOR MULTIPLE PLATES...
+		//
 		return new Promise(function(resolve) {
 			let ranges = Area.getRanges({HasDefinition: true}); //Get only the ranges that have definitions
 			let promises = [];
@@ -198,44 +246,18 @@ class Result {
 							parser.abort();
 						}
 					}
+					//***************************************************
+					//Protection for big files, until we can do better...
+					if(data.length == rowLimit) {
+						aborted = true;
+						parser.abort();
+						//console.log("Too many rows, Aborted");
+					}
+					//***************************************************
 				}.bind(this), function() { //Parsing Complete
 					resolve({Aborted: aborted, Data: data});
 				});
 			}.bind(this));
-			/*this.Parser.stream(function(row, selected, parser) { //Stream the file to build the output
-				console.log("got row", row);
-				let here = Well.parseIndex(row[w], plate); //Location of the well
-				if(here !== undefined) { //If this well is within the plate boundary
-					data.push( //Push a promise that will fulfill with the data for the entire row 
-						new Promise(function(resolveRow) {
-							let p = []; //Array of promises
-							plate.Layers.forEach(function(l) { //Loop the layers
-								let well = l.Wells[here.Index];
-								p.push(Well.layoutData(well)); //Push a promise that will resolve with the layout data at this well and layer
-							});
-							console.log("pushed promises for well to all layers");
-							Promise.all(p).then(function(layout) { //When the layout data are recovered for all layers, concat to the row and push to output data
-								console.log("Got promises for well, resolving row");
-								layout.forEach(function(l) {row = row.concat(l)});
-								resolveRow(row);
-							});
-						}) //No separator here, as we are in a push()
-					);
-				}
-				//***************************************************
-				//Protection for big files, until we can do better...
-				if(data.length == rowLimit) {
-					aborted = true;
-					parser.abort();
-					console.log("Too many rows, Aborted");
-				}
-				//***************************************************
-			}.bind(this), function() { //Parsing Complete
-				console.log("Stream complete");
-				Promise.all(data).then(function(out) { //Wait for all rows to complete then resolve
-					resolve({Aborted: aborted, Data: out});
-				}); 
-			});*/
 		}.bind(this));
 	}
 }

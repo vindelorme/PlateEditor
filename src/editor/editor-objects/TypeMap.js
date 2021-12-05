@@ -81,7 +81,7 @@ class TypeMap {
 	get(index) { //Return the type at the index location
 		return this.Map[index];
 	}
-	types(index, l) { //Return the array of types for all layer except l, at the index location.
+	types(index, l) { //Return the array of types for all layer except l, at the well index location.
 //*********************************************************
 //Can be used with l=-1 to retrieve types across all layers
 //However, it is much easier to use Map[index] in this case
@@ -146,7 +146,7 @@ class TypeMap {
 			html += "</tr>";
 		}
 		html += "</table>";
-		html+= "<p style=\"font-size:0.8em\">+: Positive Control; -: Negative Control; S: Sample; R: Range; M+/-: Mixed sample or range with control</p>"
+		html+= "<p class=\"FootNote\">+: Positive Control; -: Negative Control; S: Sample; R: Range; M+/-: Mixed sample or range with control</p>"
 		return html;
 	}
 }

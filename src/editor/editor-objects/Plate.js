@@ -30,7 +30,7 @@ class Plate {
 		this.Grid = document.createElement("canvas");
 		this.Highlight = document.createElement("canvas");
 		this.Header = document.createElement("canvas");
-		this.Layers = [new Layer({Rows: r, Cols: c, Layer: 0, Plate: this})];
+		this.Layers = [new Layer({Rows: r, Cols: c, Index: 0, ArrayIndex: 0, Plate: this})];
 		this.LastKey = 1; //Index to use for new layers, to guarantee unicity
 		this.LayerTab = new TabControl({
 			ID: this.Anchors.LayerTab,
@@ -236,8 +236,8 @@ class Plate {
 	addLayer() { //Add a new layer to the plate
 		let l = this.LastKey++; //Index of the new layer to add
 		let lay = this.Layers;
-		let here = lay.length; //Last index in the array is the one to display in html
-		let newLayer = new Layer({Rows: this.Rows, Cols: this.Cols, Layer: l, Plate: this});
+		let here = lay.length; //Last index in the array is the one to use for the display in html
+		let newLayer = new Layer({Rows: this.Rows, Cols: this.Cols, Index: l, ArrayIndex: here, Plate: this});
 		lay.push(newLayer);
 		this.LayerTab.addTab({
 			Label: "Layer " + (here + 1),
@@ -250,10 +250,18 @@ class Plate {
 		return this;
 	}
 	deleteLayer(l) { //Delete layer with provided index
-		this.Layers.splice(l,1); //Remove the layer from the array
+		let I = { //Prepare an object to transfer to the clean method
+			Map: this.TypeMap,
+			Results: {Ranges: []}
+		}
+		this.Layers[l].cleanTags(I); //Clean tags from this layer and recover impacted ranges
+		I.Results.Ranges.forEach(function(a) { //Update impacted ranges
+			this.updateRange(a);
+		}, this);
+		this.Layers.splice(l, 1); //Remove the layer from the array
 		let tab = this.LayerTab;
 		this.Layers.forEach(function(L, i) { //Redefine index of the layers and wells
-			if(i > (l-1)) { //Only update layers above the layer to be removed
+			if(i > (l - 1)) { //Only update layers above the layer to be removed
 				L.setIndex(i);
 				tab.rename(i, "Layer " + (i + 1));
 				Layer.exportControls(L); //Add the control buttons to get the layer as jpg or html
@@ -512,6 +520,7 @@ class Plate {
 		let x = (size + margin) * (startCol + 1);
 		let y = (size + margin) * (startRow + 1);
 		//let L = this.Layers[w.Layer.Index]; //The layer currently hosting the selection process
+		//let L = this.Layers[w.Layer.ArrayIndex];
 		let L = this.Layers.find(function(e) {return e.Index == w.Layer.Index});
 		if(L === undefined) {console.warn("Could not find the layer with index " + w.Layer.Index); return} //Could not find the layer
 		for(let i=startCol;i<hor;i++) { //Loop covering the wells under the lasso, col first

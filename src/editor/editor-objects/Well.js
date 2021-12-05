@@ -68,25 +68,6 @@ class Well {
 		}
 		return data;
 	}
-	/*static async layoutData(well, plate) { //Return the layout data for the current well, as an array, using the provided definitions
-		let data = [""]; //Start with an empty placeholder for the area
-		if(well.Value) {data.push(well.Value, well.Unit)}
-		else {data.push("", "")} //Need to push something to conserve the right number/order in columns
-		let a = well.Area;
-		if(a) { //If an area is present
-			if(a.Type == "Range") { //Specific case for range
-				if(a.Definition) { //There is a definition attached to this range
-					data[0] = await a.Definition.item(well, plate);
-				}
-				else { //Use generic names
-					data[0] = a.Name + " #" + well.RangeIndex;
-				}
-			}
-			else {data[0] = a.Name} //The rest is straightforward
-		}
-		return data;
-	}*/
-	
 //*******************
 //SAVE & LOAD METHODS
 //*******************
@@ -100,8 +81,8 @@ class Well {
 	}
 //*******************
 	//Getter
-	get Name() {
-		return Well.alphabet(this.Col) + (this.Row + 1);
+	get Name() { //The name of the well (A1, A2,...) based on the Row and Col index
+		return Well.alphabet(this.Row) + (this.Col + 1);
 	}
 	//Methods
 	x(space) { //Return the x coordinate for this well on the canvas, calculated based on space (size + margin)
@@ -159,13 +140,11 @@ class Well {
 	}
 	tag(a, I) { //Tag the well with area a
 		if(I.Keep == false) {this.Selected = false}
+		let t = I.Map.get(this.Index) //Type at this location when no area is defined here is directly obtained from the map
 		if(this.Area) { //Area already defined here
 			if(this.Area.Name == a.Name) {this.Duplicate = true; return this} //Tagging in duplicate
 			if(I.Lock) {this.Error = true; return this} //Trying to change the area when lock option is ON
-			var t = TypeMap.reduce(I.Map.types(this.Index, I.Layer.Index)); //Type of everything minus the area defined here, because it can be replaced
-		}
-		else { //No area defined in the well
-			var t = I.Map.get(this.Index) //Type at this location when no area is defined here is directly obtained from the map
+			t = TypeMap.reduce(I.Map.types(this.Index, I.Layer.Index)); //Type of everything minus the area defined here, because it can be replaced
 		}
 		let bool = TypeMap.checkCompatibility(t, TypeMap.valueForType(a.Type), I.Strict); //Check compatibility
 		if(!bool) {this.Error = true; return this} //Not compatible :(

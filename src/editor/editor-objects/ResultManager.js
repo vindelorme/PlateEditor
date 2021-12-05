@@ -322,8 +322,8 @@ class ResultManager {
 		});
 	}
 	//TO BE UPDATED WITH STREAM-WRITE CAPABILITIES WHEN POSSIBLE...
-	pushLayout(r) { //Merge layout data with the result file provided
-		let limit = 5000;
+	pushLayout(r, l) { //Merge layout data with the result file provided
+		let limit = 100;
 		if(r.Validated == false) { //Cannot process unvalid result file
 			Editor.Console.log({Message: "The selected result has not been validated. Update mapping parameter and try again.", Gravity: "Error"});
 			return this;
@@ -337,7 +337,7 @@ class ResultManager {
 		html += "<div><p id=\"" + output + "\">Press the start button below when ready to continue</div>";
 		let start = function() {
 			GetId(output).innerHTML = "<span class=\"Error\">Preparing file, please wait...</span>";
-			r.pushLayout(limit).then(function(out) { //run asynchronously
+			r.pushLayout(limit, l).then(function(out) { //run asynchronously
 				let save = Papa.unparse(out.Data, {delimiter: "\t"});
 				let target = GetId(output); //Important to access the element after the file has been generated
 				if(target) { //If the form is still open and the operation has not been cancelled

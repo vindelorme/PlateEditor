@@ -8,13 +8,14 @@ class Layer {
 		this.Plate = I.Plate;
 		this.Rows = r;
 		this.Cols = c;
-		this.Index = I.Layer;
+		this.Index = I.Index;
+		this.ArrayIndex = I.ArrayIndex;
 		this.Wells = [];
 		this.Highlight = undefined; //
 		this.Contents = undefined;  //References to the DOM canvas elements
 		this.Grid = undefined;		//
 		this.Selected = undefined; //Wells currently selected
-		this.Root = "Layer_" + I.Layer;
+		this.Root = "Layer_" + I.Index;
 		let index = 0;
 		for(let i=0;i<r;i++) { //Rows
 			for(let j=0;j<c;j++) { //Columns
@@ -26,12 +27,16 @@ class Layer {
 	}
 	//Static methods
 	static rootHTML(l, root) { //Return the html used as root for the layer
-		return "<fieldset><legend>Layer " + (l + 1) + " &bull; </legend><div id=\"" + root + "\" style=\"position: relative;\"></div></fieldset>";
+		return "<fieldset><legend>" + this.legendInnerHTML(l) + "</legend><div id=\"" + root + "\" style=\"position: relative;\"></div></fieldset>";
+	}
+	static legendInnerHTML(l) { //Return the html used as the innerHTML for the legend of the layer fieldset
+		return "Layer " + (l + 1) + " &bull; "; //l is the displayed index and should be 1-based, not 0-based
 	}
 	static exportControls(l) { //Create controls allowing export of the layer as jpg or html, for the passed layer object
 		let b = LinkCtrl.buttonBar([ //Create the button bar
-			Layer.getAsJPGControl(l),
-			Layer.getAsHTMLControl(l),
+			this.getAsJPGControl(l),
+			this.getAsHTMLControl(l),
+			this.getAsTxtControl(l),
 		], true); //The second argument is to get the buttonbar inline 
 		b.style.fontWeight = "normal";
 		b.style.fontSize = "0.7em";
@@ -48,7 +53,7 @@ class Layer {
 			ctx.drawImage(l.Grid, 0, 0); //Draw the grid and contents, drop the highlight
 			ctx.drawImage(l.Contents, 0, 0);
 			let href = canvas.toDataURL('image/jpeg');
-			Reporter.printable("<p><b>Layer " + (l.Index + 1) + "</b></p><img src=\"" + href + "\"></img>");
+			Reporter.printable("<p><b>Layer " + (l.ArrayIndex + 1) + "</b></p><img src=\"" + href + "\"></img>");
 		};
 		return {Label: "jpg", Title: "Click here to view this layer as a .jpg image file", Click: action};
 	}
@@ -60,7 +65,7 @@ class Layer {
 			let data = Layer.getAsHTML(l); //This will get the html for unresolved items and run the promises to get the content for ranges
 			Form.open({ //Open an empty form with waiting message
 				ID: id,
-				HTML: "<div id=\"" + controls + "\" style=\"margin: 10px\"><p class=\"Error\">Resolving names, please wait...</p></div><div id=" + output + " style=\"max-height: 500px; overflow: auto\"><p><b>Layer " + (l.Index + 1) + "</b></p>" + data.HTML + "</div>",
+				HTML: "<div id=\"" + controls + "\" style=\"margin: 10px\"><p class=\"Error\">Resolving names, please wait...</p></div><div id=" + output + " style=\"max-height: 500px; overflow: auto\"><p><b>Layer " + (l.ArrayIndex + 1) + "</b></p>" + data.HTML + "</div>",
 				Size: 700,
 				Title: "Layer as HTML",
 				Buttons: [
@@ -70,7 +75,7 @@ class Layer {
 					{Label: "Close", Icon: {Type: "Cancel", Space: true, Color: "Red"}, Click: function() {Form.close(id)} },
 				],
 			});
-			Promise.all(data.Promises).then(function(values) {
+			Promise.all(data.Promises).then(function(values) { //Wait for promises to resolve, then process the values
 				if(values.length == 0) {GetId(controls).remove(); return} //There are no ranges/definitions, so no need of controls and we can leave here
 				let r = l.Rows;
 				let c = l.Cols;
@@ -82,7 +87,7 @@ class Layer {
 							let resolved = false;
 							values.forEach(function(v) { //Travel the ranges definitions to update the current well
 								let def = v.Definition[i * c + j]; //The definition value
-								if(def != "") { //We expect only one possible definition per well, since we work on a single layer
+								if(def !== "") { //We expect only one possible definition per well, since we work on a single layer
 									span.setAttribute("resolved", def);
 									resolved = true;
 								}
@@ -142,6 +147,47 @@ class Layer {
 			}
 		});
 		return {HTML: html, Promises: promises}; //Return the promises without waiting for resolution
+	}
+	static getAsTxtControl(l) { //Returns an object suitable to create a button (using the LinkCtrl constructor) that will output the layer l as a tab-delimited txt file
+		let Cancelled = false; //Tracker for cancellation
+		let action = function() { //The click action for the button
+			let id = "Form_GetAsTxt";
+			let controls = id + "_Controls";
+			let output = id + "_Output";
+			let data = Layer.getAsTxt(l); //This will run the promises to get the content for ranges
+			Form.open({ //Open an empty form with waiting message
+				ID: id,
+				HTML: "<p class=\"Error\">Resolving names, please wait...</p>",
+				Size: 700,
+				Title: "Layer as Txt",
+				Buttons: [
+					{Label: "Cancel", Icon: {Type: "Cancel", Space: true, Color: "Red"}, Click: function() {Cancelled = true; Form.close(id)} },
+				],
+			});
+			Promise.all(data.Promises).then(function(values) { //Wait for promises to resolve, then process the values
+				if(Cancelled) {return} //Action was cancelled
+				let save = l.toTxt(values); //Create the output string
+				Form.close(id); //Clese the waiting form
+				Form.download(save, {FileName: "Layer_" + (l.ArrayIndex + 1) + ".txt"}); //Form for the download
+			});
+		};
+		return {Label: "txt", Title: "Click here to generate a tab-separated .txt file representing the content of this layer as a list", Click: action};
+	}
+	static getAsTxt(l) {
+		let ranges = []; //The array of ranges that will need to be processed for definitions
+		l.Wells.forEach(function(w) { //Travel each well to recover the ranges that need resolution
+			let a = w.Area;
+			if(a !== undefined && a.Type == "Range") { //A range
+				if(ranges.find(function(r) {return r.Name == a.Name}) === undefined) {ranges.push(a)} //Push unique ranges
+			}
+		});
+		let promises = [];
+		ranges.forEach(function(r) { //Travel the ranges
+			if(r.Definition) { //If this range has an existing definition
+				promises.push(Definition.getAsPlate(r.Definition)); //Push the promise
+			}
+		});
+		return {Promises: promises};
 	}
 //*******************
 //SAVE & LOAD METHODS
@@ -354,10 +400,9 @@ class Layer {
 		});
 		return this;
 	}
-	setIndex(i) { //Update the Layer property of each well to the specified index
-		this.Index = i; //Update layer object property
-		//GetId(this.Root).previousSibling.innerHTML = "Layer " + (i + 1); //Also change the html displayed
-		GetId(this.Root).previousSibling.innerHTML = "Layer " + (i + 1) + " &bull; "; //Also change the html displayed
+	setIndex(i) { //Update the ArrayIndex property and html displayed following layer deletion
+		this.ArrayIndex = i; //Update layer object property
+		GetId(this.Root).previousSibling.innerHTML = Layer.legendInnerHTML(i); //Also change the html displayed
 				
 	}
 	tagArea(a, I) { //Tag the area in selection
@@ -400,6 +445,13 @@ class Layer {
 			});
 			if(I.Keep == false) {this.Selected = undefined} //Reset the selection
 		}
+		return this;
+	}
+	cleanTags(I) { //Clean-up the tags from this layer. This should be done only as part of the removal process of this layer
+		I.Layer = this;
+		this.Wells.forEach(function(w) { //Travel all the wells and remove the tags when needed
+			w.untag(I); //This will take care of updating: the Tags for the impacted areas, the TypeMap and I with the impacted Ranges
+		});
 		return this;
 	}
 	highlightConflicts(conflicts, size, margin) { //Highlight wells with indices passed in the array conflicts
@@ -520,5 +572,31 @@ class Layer {
 			}
 		});
 		return this;
+	}
+	toTxt(values) { //Output the layer as a tab-delimited list in a string format. Use the resolved values when available
+		let out = "Well\tRow\tCol\tWell Index\tArea\tConc.\tUnit\tDefinition\n";
+		this.Wells.forEach(function(w, i) {
+			if(i > 0) {out += "\n"}
+			out += w.Name + "\t" + w.Row + "\t" + w.Col + "\t" + w.Index + "\t";
+			let a = w.Area;
+			if(a !== undefined) { //Area present in this well, add its name
+				if(a.Type == "Range") {out += a.Name + " #" + w.RangeIndex}
+				else {out += a.Name}
+			}
+			out += "\t";
+			if(w.Value !== undefined) {out += w.Value} //Add the concentration if available
+			out += "\t";
+			if(w.Unit !== undefined) {out += w.Unit} //Add the unit if available
+			out += "\t";
+			if(a !== undefined) { //Area present in this well: add the resolved name if available
+				values.forEach(function(v) { //Travel the ranges definitions to update the current well
+					let def = v.Definition[i]; //The definition value
+					if(def !== "") { //We expect only one possible definition per well, since we work on a single layer
+						out += def;
+					}
+				});
+			}
+		});
+		return out;
 	}
 }
