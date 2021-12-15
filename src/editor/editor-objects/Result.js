@@ -178,7 +178,6 @@ class Result {
 		for(let i=0; i<l; i++) { //For each layer
 			header = header.concat(["Area", "Value", "Unit"]); //Concat a series of column to hold the values
 		}
-		console.log(l, [header]);
 		let data = [header];
 		//
 		//THIS IS THE RIGHT WAY TO DO TO GET THE DEFINITION RESOLVED CORRECTLY AT THEIR PLATE Location

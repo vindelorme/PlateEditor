@@ -323,7 +323,7 @@ class ResultManager {
 	}
 	//TO BE UPDATED WITH STREAM-WRITE CAPABILITIES WHEN POSSIBLE...
 	pushLayout(r, l) { //Merge layout data with the result file provided
-		let limit = 100;
+		let limit = Editor.pushLimit; //Limit of rows to accumulate in the PushLayout method;
 		if(r.Validated == false) { //Cannot process unvalid result file
 			Editor.Console.log({Message: "The selected result has not been validated. Update mapping parameter and try again.", Gravity: "Error"});
 			return this;

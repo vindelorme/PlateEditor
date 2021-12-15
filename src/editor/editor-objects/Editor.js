@@ -7,6 +7,7 @@ class Editor {
 	static init() { //Initialize the editor. This generates all the controls and buttons
 		this.Root = "Editor";
 		this.pixelRatio = 2; //Provides better resolution for the canvas
+		this.pushLimit = 5000; //Limit of rows to accumulate in the PushLayout method
 		let menuRoot = this.Root + "_Menu";
 		let mainRoot = this.Root + "_Main";
 		let popupRoot = this.Root + "_Popup";
