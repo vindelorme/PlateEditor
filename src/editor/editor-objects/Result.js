@@ -116,6 +116,60 @@ class Result {
 		}
 		return {Label: "html", Title: "Click here to view this heatmap as an html array", Click: action}
 	}
+	static getAsTxtControl(result, paramIndex) { //Returns an object suitable to create a button (using the LinkCtrl constructor) that will output the parameter with the desired index, for the result passed, as a .txt file
+		let p = result.Parameters[paramIndex];
+		let Cancelled = false; //Tracker for cancellation
+		let action = function() { //The click action for the button
+			let plateIndex = Editor.ResultManager.PlateSelect.Selected;
+			let id = "Form_GetAsTxt";
+			let name = result.Name + " (Plate: " + plateIndex + ") - " + p.Name;
+			Form.open({ //Open an empty form with waiting message
+				ID: id,
+				HTML: "<div style=\"max-height: 500px; overflow: auto\"><p><b>" + name + "</b></p><div><span class=\"Error\">Resolving values, please wait...</span></div></div>",
+				Size: 500,
+				Title: "Parameter as Txt",
+				Buttons: [
+					{Label: "Cancel", Icon: {Type: "Cancel", Space: true, Color: "Red"}, Click: function() {Cancelled = true; Form.close(id)} },
+				],
+			});
+			result.getValues(plateIndex, paramIndex).then(function(data) { //Fetch the data, then build the string for the file
+				if(Cancelled) {return} //Action was cancelled
+				if(p.Numeric) { //Convert text into numbers
+					data = Result.cleanValues(data);
+				}
+				let o = Parameter.getMinMax(p, data, Editor.ResultManager.extremumObject());
+				let r = Editor.Plate.Rows;
+				let c = Editor.Plate.Cols;
+				let txtVal = "Values"; //The string for the values
+				let txtNorm = "Normalized"; //The string for the normalized values
+				for(let j=0; j<c; j++) { //Headers, for each col
+					txtVal += "\t" + (j + 1);
+					txtNorm += "\t" + (j + 1);
+				}
+				txtVal += "\n";
+				txtNorm += "\n";
+				for(let i=0; i<r; i++) { //Travel all the rows
+					txtVal += Well.alphabet(i) + "\t";
+					txtNorm += Well.alphabet(i) + "\t";
+					for(let j=0; j<c; j++) { //Travel all the cols
+						let val = data[i * c + j];
+						if(val !== undefined) {
+							txtVal += val;
+							txtNorm += (val - o.Min) / (o.Max - o.Min);
+						}
+						txtVal += "\t";
+						txtNorm += "\t";
+					}
+					txtVal += "\n";
+					txtNorm += "\n";
+				}
+				let txt = "Data for Result: " + name + "\n\n" + txtVal + "\n\n\n" + txtNorm;
+				Form.close(id); //Clese the waiting form
+				Form.download(txt, {FileName: "HeatMap.txt"}); //Form for the download
+			});
+		}
+		return {Label: "txt", Title: "Click here to download the values as a tab-separated txt file (matrix format)", Click: action}
+	}
 	static cleanValues(output) { //Clean the array of values recovered from the Mapper, to ensure the conversion to number and correct handling of empty strings
 		return output.map(function(v) {
 			return Mapper.cleanValue(v);

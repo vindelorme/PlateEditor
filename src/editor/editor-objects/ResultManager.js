@@ -159,6 +159,7 @@ class ResultManager {
 				let b = LinkCtrl.buttonBar([ //Create the button bar
 					Result.getAsJPGControl(result, i),
 					Result.getAsHTMLControl(result, i),
+					Result.getAsTxtControl(result, i),
 				], true); //The second argument is to get the buttonbar inline 
 				b.style.fontWeight = "normal";
 				b.style.fontSize = "0.7em";
