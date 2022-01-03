@@ -7,9 +7,9 @@ class Mapper {
 	static well(I) { //Required for results, not for definitions
 		let bool = true;
 		if(I && I.Required) {bool = false}
-		return {Name: "Well ID", Optional: bool, Guess: function(h, first) {return h.toString().search(/well/i) > -1}} //toString is essential to treat correctly cases where the header is a number
+		return {Name: "Well ID", Optional: bool, Guess: function(h, first) {return h.toString().search(/well/i) > -1} } //toString is essential to treat correctly cases where the header is a number
 	}
-	static plate() {return {Name: "Plate ID", Optional: true, Guess: function(h, first) {return (h.toString().search(/barcode/i) > -1 || h.search(/plate/i) > -1)}}} //toString is essential to treat correctly cases where the header is a number
+	static plate() {return {Name: "Plate ID", Optional: true, Guess: function(h, first) {return (h.toString().search(/barcode/i) > -1 || h.toString().search(/plate/i) > -1)}}} //toString is essential to treat correctly cases where the header is a number
 	static definition() {return {Name: "Definition"}} //Required
 	static import() {return {Name: "Import", Multiple: true}} //Required
 	static numeric() {
