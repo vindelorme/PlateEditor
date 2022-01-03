@@ -99,22 +99,22 @@ class Form_Import {
 		return this;
 	}
 	static addInput() { //Add input to the input list
-		var T = this.Controls.Table;
+		let T = this.Controls.Table;
 		if(this.Multiple == false && T.Length > 0) {alert("Only one input allowed!"); return this}
 		switch(this.Controls.InputType.Selected) {
 			case "From file(s)": //Add a file to the list of input
-				var fileList = this.Controls.File.getValue();
-				var l = fileList.length;
+				let fileList = this.Controls.File.getValue();
+				let l = fileList.length;
 				for(let i=0;i<l;i++) { //For each file. fileList is a file collection, not an array, so forEach doesn't work here
-					var f = InputObject.new("File", fileList[i]);
+					let f = InputObject.new("File", fileList[i]);
 					T.addRow(f);
 				}
 				this.Controls.File.setValue([]); //Prepare for next import
 				break;
 			case "Manual input": //Add manually entered data
-				var data = this.Controls.Manual.getValue();
+				let data = this.Controls.Manual.getValue();
 				if(data.length > 0) { //Don't input empty values
-					var m = InputObject.new("Manual", {Data: data, Name: this.Controls.ManualName.getValue()});
+					let m = InputObject.new("Manual", {Data: data, Name: this.Controls.ManualName.getValue()});
 					T.addRow(m);
 					this.Controls.Manual.setValue(""); //Reset the fields for next import
 					this.Controls.ManualName.setValue("");

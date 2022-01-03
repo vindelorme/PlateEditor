@@ -153,7 +153,7 @@ class Result {
 					txtNorm += Well.alphabet(i) + "\t";
 					for(let j=0; j<c; j++) { //Travel all the cols
 						let val = data[i * c + j];
-						if(val !== undefined) {
+						if(val !== undefined && isNaN(val) == false) {
 							txtVal += val;
 							txtNorm += (val - o.Min) / (o.Max - o.Min);
 						}

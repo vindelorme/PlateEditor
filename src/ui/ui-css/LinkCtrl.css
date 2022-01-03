@@ -128,7 +128,12 @@
 	border: 2px solid blue;
 }
 .LinkCtrl_FileDropError {
+	border: 2px dashed darkred;
 	color: salmon;
+}
+.LinkCtrl_FileDropSuccess {
+	border: 2px dashed green;
+	color: green;
 }
 /******************************/
 /*Styles for icons in controls*/

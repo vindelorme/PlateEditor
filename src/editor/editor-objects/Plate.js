@@ -249,7 +249,7 @@ class Plate {
 		Editor.ResultManager.layerUpdate(); //Update the layer control
 		return this;
 	}
-	deleteLayer(l) { //Delete layer with provided index
+	deleteLayer(l) { //Delete layer with provided ArrayIndex
 		let I = { //Prepare an object to transfer to the clean method
 			Map: this.TypeMap,
 			Results: {Ranges: []}
@@ -258,7 +258,7 @@ class Plate {
 		I.Results.Ranges.forEach(function(a) { //Update impacted ranges
 			this.updateRange(a);
 		}, this);
-		Editor.Tables.Areas.update(); //Update so that the ranges have correct display
+		Editor.Tables.Areas.update(); //Update the table display so that the ranges have correct information
 		Editor.Tables.Areas.Array.forEach(function(a) {a.cleanTags(this.Layers[l].Index)}, this); //All areas must now delete any reference to this destroyed layer
 		this.Layers.splice(l, 1); //Remove the layer from the array
 		let tab = this.LayerTab;
@@ -561,7 +561,7 @@ class Plate {
 		if(data) {
 			GetId(pop.Data).innerHTML = "Resolving value..."
 			data.Result.getValue(data.Parameter, w).then(function(value) {
-				if(value) {GetId(pop.Data).innerHTML = value}
+				if(value !== undefined) {GetId(pop.Data).innerHTML = value} //Zero is a falsy value, so a test against "undefined" should be used
 				else {GetId(pop.Data).innerHTML = ""}
 			}.bind(this));
 		}

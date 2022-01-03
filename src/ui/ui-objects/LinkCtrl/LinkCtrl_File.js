@@ -37,6 +37,7 @@ class LinkCtrl_File extends LinkCtrl {
 		let root = GetId(this.Me); //The hosting span for the control
 		let input = root.children[0]; //The hidden input
 		let clear = root.previousElementSibling; //The clear button
+		let drop = root.nextElementSibling.nextElementSibling; //The drop box
 		root.addEventListener("click", function() {input.click()}); //Activate the file:input button to open the file selection browsing window)
 		input.addEventListener("change", function() {
 			this.Value = input.files;
@@ -48,9 +49,10 @@ class LinkCtrl_File extends LinkCtrl {
 			this.Value = [];
 			root.nextElementSibling.remove(); //The following span is removed and replaced with an updated one
 			root.insertAdjacentHTML("afterend", this.fileInfo());
+			drop.className = "LinkCtrl_FileDrop"; //Reset the style of the drop box
+			drop.innerHTML = LinkCtrl_File.dropMsg(this.DragMsg); //Also reset the drop msg
 			this.change();
 		}.bind(this));
-		let drop = root.nextElementSibling.nextElementSibling; //The drop box
 		drop.addEventListener("dragenter", function(e) {
 			e.target.className = "LinkCtrl_FileDropHover LinkCtrl_FileDrop";
 			e.target.innerHTML = "";
@@ -58,7 +60,7 @@ class LinkCtrl_File extends LinkCtrl {
 		});
 		drop.addEventListener("dragleave", function(e) {
 			e.target.className = "LinkCtrl_FileDrop";
-			e.target.innerHTML = LinkCtrl_File.dropMsg(this.DragMsg) ;
+			e.target.innerHTML = LinkCtrl_File.dropMsg(this.DragMsg);
 			e.preventDefault();
 		}.bind(this));
 		drop.addEventListener("dragover", function(e) {
@@ -83,7 +85,7 @@ class LinkCtrl_File extends LinkCtrl {
 				this.setValue([]);
 			}
 			else {
-				let diff = l - valid.length; //Number of rejected files
+				let diff = l - v; //Number of rejected files
 				if(diff > 0) { //At least one file rejected
 					if(diff > 1) {msg = diff + " files with unauthorized format were rejected"}
 					else {msg = "A file with unauthorized format was rejected"}
@@ -102,8 +104,10 @@ class LinkCtrl_File extends LinkCtrl {
 				e.target.className = "LinkCtrl_FileDrop LinkCtrl_FileDropError";
 			}
 			else {
-				e.target.innerHTML = LinkCtrl_File.dropMsg(this.DragMsg) ;
-				e.target.className = "LinkCtrl_FileDrop";
+				let plural = "";
+				if (v > 1) {plural = "s"}
+				e.target.innerHTML = LinkCtrl_File.dropMsg(v + " file" + plural + " added") ;
+				e.target.className = "LinkCtrl_FileDrop LinkCtrl_FileDropSuccess";
 			}
 		}.bind(this));
 	}
@@ -113,6 +117,9 @@ class LinkCtrl_File extends LinkCtrl {
 			//ui.children[0].value = v; //The value of the hidden input is updated
 			ui.nextElementSibling.remove();
 			ui.insertAdjacentHTML("afterend", this.fileInfo());
+			let drop = ui.nextElementSibling.nextElementSibling; //The drop box
+			drop.className = "LinkCtrl_FileDrop"; //Reset the style of the drop box
+			drop.innerHTML = LinkCtrl_File.dropMsg(this.DragMsg); //Also reset the drop msg
 		}
 	}
 	fileInfo() { //Returns an html string indicating the file(s) selected

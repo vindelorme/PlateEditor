@@ -17,25 +17,7 @@ class Report_Aggregate extends Report {
 			{Label: "Unselect all", Title: "Click here to unselect all areas", Click: function() {this.UI.A.setValue([]); this.computeStats()}.bind(this)},
 			{Label: "Select all", Title: "Click here to select all areas", Click: function() {this.UI.A.selectAll(); this.computeStats()}.bind(this)},
 		]);
-		//GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
 		GetId("Areas").parentElement.prepend(bar);
-		/*this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
-			let d = r.Definition;
-			if(d !== undefined) {
-				let sel = LinkCtrl.new("Select", {ID: "Definitions_Select", NewLine: true, Index: i, Default: 0, List: d.PlatesID, Label: d.Area.Name, Title: "The plate to use for the resolution of the names for this range", Change: function(v) {
-					this.resolveNames(d, i).then(function(names) { //Fetch the names for the plate selected for this range
-						this.ResolvedNames[i] = names; //Update the name property for this definition
-						this.updateNames(d.Area, i); //Update the displayed names
-					}.bind(this));
-					if(v !== undefined) { //If the change is triggered by a pair setter, v will be undefined and there is no need to check the status. But if the select is changed manually by the user, need to check
-						this.pairStatus(this.UI.Plate.getValue(), {Check: true}); //Update the pair status
-					}
-				}.bind(this)});
-				if(sel.List.length > 1) {sel.NavBar = true; sel.Lookup = {Active: false} }
-				if(i > 0) {sel.Preserve = true}
-				this.UI["Definition_" + i] = sel;
-			}
-		}, this);*/
 		this.prepareDefinition();
 		return this;
 	}
@@ -70,14 +52,7 @@ class Report_Aggregate extends Report {
 	}
 	resolveNames(d, defIndex) { //Resolve the names for the definition passed
 		let a = d.Area;
-		//
-		//
-		//
-		//let factor = Math.ceil(a.Tagged / a.Replicates);
 		let factor = a.MaxRange;
-		//
-		//
-		//
 		let args = {
 			Plate: this.UI["Definition_" + defIndex].Selected, //Name of the plate where to look the data
 			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available
@@ -142,7 +117,7 @@ class Report_Aggregate extends Report {
 		let o = {Items: 0, Areas: this.UI.A.Array, Params: []} //Output object containing the data for one plate
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
 			//if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
-			if(p.Selected) { //This parameter is selected and numeric type, continue
+			if(p.Selected) { //This parameter is selected, continue
 				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex});
 				o.Areas.forEach(function(a) { //For each area
 					a.Values.push([]); //Create empty arrays to receive the values
@@ -156,7 +131,8 @@ class Report_Aggregate extends Report {
 				output.Areas.forEach(function(a) { //For each area
 					if(a.Tags.includes(wellIndex)) { //This area is tagged on this well
 						output.Params.forEach(function(param, i) { //Log the values for all parameters
-							a.Values[i].push(Number(row[param.Index]));
+							//a.Values[i].push(Number(row[param.Index]));
+							a.Values[i].push(row[param.Index]);
 						});
 					}
 				});
