@@ -103,8 +103,13 @@ class Result {
 					for(let j=0; j<c; j++) { //Travel all the cols
 						let val = data[i * c + j];
 						let bgColor = "rgb(255, 255, 255)"; //White
-						if(val === undefined) {val = "<span class=\"Error\">&Oslash;</span>"}
-						else {bgColor = CSSCOLORS.heatmap(val, o.Min, o.Max, grad)} //set bgColor as the heatmap color
+						if(val === undefined || val === null) {val = "<span class=\"Error\">&Oslash;</span>"} //First exclude the undefined cases
+						else {
+							if(typeof(val) == "number") { //The value is numerical (strings are ignored and outputed as is)
+								if(isNaN(val)) {val = "<span class=\"Error\">&Oslash;</span>"} //Exclude NaN case
+								else {bgColor = CSSCOLORS.heatmap(val, o.Min, o.Max, grad)} //set bgColor as the heatmap color
+							}
+						}
 						let color = CSSCOLORS.font(bgColor, "RGB_Unnamed"); //Adapt font (black/white) depending on the background
 						html += "<td style=\"background-color:" + bgColor + "; color: " + color + "; padding: 0.2em; border: 1px solid black\">" + val + "</td>";
 					}
