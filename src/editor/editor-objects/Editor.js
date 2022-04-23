@@ -160,10 +160,9 @@ class Editor {
 			{Label: "Add results", Icon: {Type: "New", Space: true}, Title: "Attach new results file to the plate layout", Click: function() {this.newResult()}.bind(this)},
 			{Label: "Edit", Title: "Edit the selected result", Icon: {Type: "Edit", Space: true}, Click: function() {this.editResult()}.bind(this)},
 			{Label: "Pairing", Title: "Tools for pairing of result and definition plates", Click: function() {this.pairing()}.bind(this)},
-			//{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
 		]));
 		GetId(this.Anchors.Menu.Results).previousSibling.append(LinkCtrl.buttonBar([
-			{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Let's review this later, with stream-write capabilities
+			{Label: "Push Layout", Title: "Push the layout data to the selected result file", Click: function() {this.pushLayout()}.bind(this)}, //Need review ith stream-write capabilities
 		]));
 		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
 			{Label: "Controls", Title: "Aggregate data for the controls defined in the layout and compute Z-factors", Click: function() {this.report("zFactor")}.bind(this)},
@@ -274,23 +273,29 @@ class Editor {
 	}
 	static load() { //Load a layout from file
 		let id = "Form_Load";
-		let FileCtrl = LinkCtrl.new("File", {ID: "FormLoad_FileSelect", Default: "", Label: "Layout file", Title: "Click to select the file containing the layout definition", Accept: ".save"})
+		let FileCtrl = LinkCtrl.new("File", {ID: id + "_FileSelect", Default: "", Label: "Layout file", Title: "Click to select the file containing the layout definition", Accept: ".save"});
+		let DirectInput = LinkCtrl.new("Text", {ID: id + "_Text", Default: "", Label: "Direct JSON input", Title: "Copy the JSON content here", Size: 18});
 		Form.open({
 			ID: id,
-			HTML: "<p>Select the Layout file to load</p><div id=\"" + FileCtrl.ID + "\"></div>",
+			HTML: "<p>Select the Layout file to load</p><div id=\"" + FileCtrl.ID + "\"></div><br><div id=\"" + DirectInput.ID + "\"></div>",
 			Title: "Load layout",
 			Buttons: [
 				{Label: "Next", Click: function() {
 					let files = FileCtrl.getValue();
-					if(files.length == 0) {alert("No file selected"); return this}
-					let reader = new FileReader();
-					reader.onload = function(e) {this.loadPreview(e.target.result)}.bind(this);
-					reader.readAsText(files[0]);
+					if(files.length == 0 && DirectInput.getValue() == "") {alert("No valid input found"); return this}
+					if(files.length > 0) { //Process files
+						let reader = new FileReader();
+						reader.onload = function(e) {this.loadPreview(e.target.result)}.bind(this);
+						reader.readAsText(files[0]);
+					}
+					else { //Process string directly
+						this.loadPreview(DirectInput.getValue());
+					}
 					Form.close(id);
 				}.bind(this)},
 				{Label: "Cancel", Icon: {Type: "Cancel", Space: true, Color: "Red"}, Click: function() {Form.close(id)}}
 			],
-			onInit: function() {FileCtrl.init()},
+			onInit: function() {FileCtrl.init(); DirectInput.init()},
 		});
 		return this;
 	}
