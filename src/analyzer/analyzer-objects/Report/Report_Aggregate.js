@@ -116,9 +116,8 @@ class Report_Aggregate extends Report {
 		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
 		let o = {Items: 0, Areas: this.UI.A.Array, Params: []} //Output object containing the data for one plate
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
-			//if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
 			if(p.Selected) { //This parameter is selected, continue
-				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex});
+				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex, Numeric: p.Numeric});
 				o.Areas.forEach(function(a) { //For each area
 					a.Values.push([]); //Create empty arrays to receive the values
 				});
@@ -131,8 +130,8 @@ class Report_Aggregate extends Report {
 				output.Areas.forEach(function(a) { //For each area
 					if(a.Tags.includes(wellIndex)) { //This area is tagged on this well
 						output.Params.forEach(function(param, i) { //Log the values for all parameters
-							//a.Values[i].push(Number(row[param.Index]));
-							a.Values[i].push(row[param.Index]);
+							if(param.Numeric) {a.Values[i].push(Number(row[param.Index]))}
+							else {a.Values[i].push(row[param.Index])}
 						});
 					}
 				});
