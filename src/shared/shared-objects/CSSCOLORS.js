@@ -95,6 +95,8 @@ class CSSCOLORS {
 	}
 	static heatmap(c, min, max, colors) { //Return the heatmap color for the value c, normalized between min and max, following rgb color gradient given as 2d array [min[R, G, B], middle[R, G, B], max[R, G, B]]
 		if(min == max) {return "rgb(" + colors[1][0] + ", " + colors[1][1] + ", " + colors[1][2] + ")"} //Only one value, return the middle color
+		if(c <= min) {c = min} 
+		if(c >= max) {c = max}
 		c = (c - min) / (max - min); //normalize value
 		if(c == 0.5) {return "rgb(" + colors[1][0] + ", " + colors[1][1] + ", " + colors[1][2] + ")"} //Easy
 		if(c < 0.5) { //First part of the gradient
