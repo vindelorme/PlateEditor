@@ -116,6 +116,7 @@ class Report_Aggregate extends Report {
 		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
 		let o = {Items: 0, Areas: this.UI.A.Array, Params: []} //Output object containing the data for one plate
 		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
+			//if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
 			if(p.Selected) { //This parameter is selected, continue
 				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex, Numeric: p.Numeric});
 				o.Areas.forEach(function(a) { //For each area

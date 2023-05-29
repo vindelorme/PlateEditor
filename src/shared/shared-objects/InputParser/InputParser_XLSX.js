@@ -84,7 +84,7 @@ class InputParser_XLSX extends InputParser {
 								let valStart = cell.indexOf("<v>");
 								if(valStart > -1) { //This cell has a value
 									let v = cell.substring(valStart + 3, cell.indexOf("</v>")); //The value
-									let type = cell.match(/t="(.+?)"/);
+									let type = cell.substring(0, cell.indexOf('</c>')).match(/t="(.+?)"/); //Restrict the search to the current cell. Expecially useful for the last cell
 									if(type !== null) {
 										switch(type[1]) {
 											case "b": //Boolean value

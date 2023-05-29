@@ -80,11 +80,27 @@ a {
 	font-style: italic;
 	margin-left: 5px;
 }
+.SmallTitle {
+	font-weight: bold;
+	font-style: italic;
+	text-align: center;
+	font-size: 0.9em;
+	margin: 5px;
+}
 .Note {
 	margin: 5px;
 	font-size: 0.9em;
 	font-style: italic;
 	color: blue;
+}
+.Droppable {
+	float: left;
+	width: 190px;
+	margin-bottom: 5px;
+	border: 2px dashed gray;
+}
+.Droppable_Hover {
+	border: 2px solid blue;
 }
 .Selectable_Row {
 	cursor: pointer;

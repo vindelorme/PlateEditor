@@ -30,23 +30,24 @@ class Coordinate {
 		}
 	}
 	static statValue(val) { //Compute the stats for a single value of the Values array
-		if(val instanceof Array) { //An array of values
+		if(Array.isArray(val)) { //An array of values
+			let l = val.length; //Total number of values in the array
 			let v = val.filter(function(n) { //Get the array of numerical elements only
 				return Decimal.isNumeric(n);
 			});
-			let n = v.length;
-			if(n == 0) {return {N: 0} } //No values means no more work to do
-			if(n == 1) {return {N: 1, Average: v[0]}} //Only one value means nothing else to do
+			let n = v.length; //Total number of numerical values
+			if(n == 0) {return {N: 0, Total: l} } //No values means no more work to do
+			if(n == 1) {return {N: 1, Average: v[0], Total: l}} //Only one value means nothing else to do
 			let total = v.reduce(function(acc, cur) {return acc + cur}, 0);
 			let avg = total / n; //Average value
 			let sumVariance = val.reduce(function(acc, cur) {
 				return acc + Math.pow(cur - avg, 2);
 			}, 0);
 			let SD = Math.sqrt(sumVariance / n);
-			return {N: n, Average: avg, SD: SD, CV: 100 * SD / avg}
+			return {N: n, Average: avg, SD: SD, CV: 100 * SD / avg, Total: l}
 		}
 		else { //Just one value
-			return {N: 1, Average: val}
+			return {N: 1, Average: val, Total: 1}
 		}
 	}
 	static flatten(c) { //Flatten the Values array of the coordinate into a single, 1D array containing only numerical values

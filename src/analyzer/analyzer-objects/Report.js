@@ -223,7 +223,7 @@ class Report {
 				}.bind(this)});
 				if(sel.List.length > 1) {sel.NavBar = true; sel.Lookup = {Active: false} }
 				if(i > 0) {sel.Preserve = true}
-				this.UI["Definition_" + i] = sel;
+				this.UI["Definition_" + i] = sel; //Log the definition in the UI object
 			}
 		}, this);
 		return this;
@@ -287,6 +287,17 @@ class Report {
 		this.Cancel = true;
 		return this;
 	}
+	refresh(what, I) {
+		if(what == "Rows") {this.refreshRows(I)}
+		else {
+			this.Blocs.forEach(function(b) {
+				b.Sections.forEach(function(s) {
+					s.update();
+				});
+			});
+		}
+	}
+	/*
 	refresh(what, I) { //Refresh the report
 		switch(what) {
 			case "Rows": this.refreshRows(I); break;
@@ -296,7 +307,7 @@ class Report {
 			break;
 		}
 		return this;
-	}
+	}*/
 	refreshRows(I) { //Update the number of rows displayed per table
 		let height = "unset";
 		if(I.Collapse) {height = Analyzer.divHeight(I.Rows)}
@@ -311,6 +322,7 @@ class Report {
 		}
 		return this;
 	}
+	/*
 	refreshDecimals(I) { //Update the number of decimals displayed
 		let HTMLcollection = [];
 		if(I && I.LogOnly) {HTMLcollection = GetId("Output").getElementsByClassName("Value_PlaceHolder Header_Conc")} //Limit to the relevant items for log scale
@@ -365,18 +377,19 @@ class Report {
 			else {elt.innerHTML = elt.getAttribute("name")} //Off
 		}
 		this.refreshDecimals({LogOnly: true, Log: show, Shift: shift}); //Refresh the value display
-		/*let HTMLcollection = GetId("Output").getElementsByClassName("Value_PlaceHolder Header_Conc");
-		let l = HTMLcollection.length;
-		for(let i=0; i<l; i++) {
-			let elt = HTMLcollection[i];
-			let val = Math.log10(Number(elt.getAttribute("value")));
-			if(shift) { //Shift on
-				val += Unit.shiftForUnit()
-			}
-			elt.setAttribute("logvalue", val);
-			if(show) {elt.innerHTML = Analyzer.roundNb(val)} //This option only affects display when log scale is turned on
-		}*/
+		//let HTMLcollection = GetId("Output").getElementsByClassName("Value_PlaceHolder Header_Conc");
+		//let l = HTMLcollection.length;
+		//for(let i=0; i<l; i++) {
+		//	let elt = HTMLcollection[i];
+		//	let val = Math.log10(Number(elt.getAttribute("value")));
+		//	if(shift) { //Shift on
+		//		val += Unit.shiftForUnit()
+		//	}
+		//	elt.setAttribute("logvalue", val);
+		//	if(show) {elt.innerHTML = Analyzer.roundNb(val)} //This option only affects display when log scale is turned on
+		//}
 	}
+	*/
 	exportAll() { //Export all data for available blocs and sections
 		let Z = new JSZip();
 		let id = "Form_Save";

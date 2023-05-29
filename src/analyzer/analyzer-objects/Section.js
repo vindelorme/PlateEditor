@@ -6,6 +6,7 @@ class Section {
 		this.ID = I.ID;
 		this.Bloc = I.Bloc; //Parent bloc object
 		this.Name = I.Name; //Internal name
+		this.Data = undefined; //Data stored for this section
 		this.TableType = (I.TableType || "Simple"); //Defines the table type to let the analyzer know how to export it. Values can be [Simple, Inner]
 		this.Summary = I.Summary; //Whether this section contains a summary table
 		if(this.Summary !== undefined) { //In this case, keeping the values computed facilitates the creation and maintenance of the summary table
@@ -48,8 +49,21 @@ class Section {
 		return name.replace(/_{2,}/g, '_'); //Eliminate consecutive _
 	}
 	static fileHeader(s) { //Prepare a header for the file to be exported, that summarizes exactly where these data belongs to
-		let names = [s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
-		return "Data for Result file: [" + s.Bloc.File + "]; Parameter:  [" + names[0] + "]; Table: [" + names[1] + "]\n"; //Merge the names together into a single string
+		//let names = [s.Bloc.Name, s.Name].map(function(n) {return Report.cleanFileName(n)}); //Clean each name individually
+		let header = "[File metadata]\n";
+		header += "Result file: " + s.Bloc.File + "\n";
+		header += "Parameter: " + s.Bloc.Name + "\n";
+		header += "Table: " + s.Name + "\n";
+		header += "Plate: " + Analyzer.Report.UI.Plate.Selected + "\n";
+		Analyzer.Report.Ranges.forEach(function(r, i) {
+			let d = Analyzer.Report.UI["Definition_" + i];
+			if(d !== undefined) {
+				header += "Definition plate for range '" + r.Name + "': " + d.Selected + "\n";
+			}
+		});
+		let agg = Analyzer.Report.UI.DataView.Selected;
+		if(agg !== undefined) {header += "Aggregation: " + agg + "\n"} //Aggregation for reports supporting it
+		return  header + "\n"; //Merge the names together into a single string
 	}
 	//Methods
 	HTML(title) { //Prepare the inner html for a section
@@ -70,6 +84,25 @@ class Section {
 		me.innerHTML = content;
 		return this;
 	}
+	//
+	//
+	//
+	update(source) { //Update the content of the section
+		let content = {};
+		if(source) { //Use the provided content if any
+			content = source;
+		}
+		else { //Using the provided content is faster, so parsing the data should be done only when really necessary
+			if(this.Data === undefined) {return this} //Error or welcome msg would be good here
+			content = JSON.parse(this.Data); //Stored data should be reused if they exist
+		}
+		let me = GetId(this.ID);
+		me.innerHTML = Analyzer.exportJSON(content, "html");
+		return this;
+	}
+	//
+	//
+	//
 	activateControls() { //Activate control elements within this section
 		let me = GetId(this.ID);
 		me.previousSibling.append(LinkCtrl.buttonBar([
@@ -184,13 +217,12 @@ class Section {
 					let well = JSON.parse(c.getAttribute("well")); //Recover a pseudo-well object
 					let newName = I.Names[well.Index];
 					if(newName !== undefined && newName !== null && newName.length > 0) {c.innerHTML = newName} //Update the generic name with the resolved one, if it exists
-					//c.innerHTML = I.Names[well.Index]; //Update the generic name with the resolved one
 				}
 			}
 		}
 		return this;
 	}
-	export(I) { //Export the table data of this section
+	/*export(I) { //Export the table data of this section
 		let tables = Section.getTables(this);
 		let l = tables.length;
 		let save = Section.fileHeader(this);
@@ -206,6 +238,20 @@ class Section {
 		}
 		let blob = new Blob([save], {type : "text/plain;charset=utf-8"});
 		if(I && I.BlobOnly) {return blob} //If only the blob is required (chaining with other files), exit here by returning the blob
+		let fileName = "Results.txt";
+		if(I && I.FileName) {fileName = I.FileName + ".txt"}
+		Form.download(save, {FileName: fileName});
+		return this;
+	}*/
+	export(I) { //Export section data as txt
+		if(this.Data === undefined) {return this}
+		let content = JSON.parse(this.Data);
+		let save = Section.fileHeader(this);
+		save += Analyzer.exportJSON(content, "txt");
+		if(I && I.BlobOnly) { //If only the blob is required (chaining with other files), exit here by returning the blob
+			let blob = new Blob([save], {type : "text/plain;charset=utf-8"});
+			return blob;
+		}
 		let fileName = "Results.txt";
 		if(I && I.FileName) {fileName = I.FileName + ".txt"}
 		Form.download(save, {FileName: fileName});

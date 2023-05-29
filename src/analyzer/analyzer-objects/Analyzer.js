@@ -16,12 +16,12 @@ class Analyzer {
 	static logValue(v) { //Compute the log10 of the value v for the report passed
 		let log = Math.log10(v.Value);
 		if(this.Report.Options.Shift.getValue()) { //Shift to the higher unit
-			return log + Unit.shiftForUnit(v.Name);
+			return log + Unit.shiftForUnit(v.Unit);
 		}
 		return log;
 	}
 	static isNumeric(v) { //Returns a boolean to indicate if the value is text or number
-		return (v !== undefined && v.toFixed !== undefined && isNaN(v) == false);
+		return Decimal.isNumeric(v);
 	}
 	static divHeight(n) { //Compute the height of the div required to display n rows
 		return (1.65 * (n + 0.5)) + "em"; //Row height is ~1.65em (1.25em + 0.4 padding) per default, add half a row to let the user know something is below
@@ -31,38 +31,90 @@ class Analyzer {
 		width = Math.max(width, 2);
 		return width + "em";
 	}
-	static noData() { //The string used to indicate this cell has no data
-		return "<span class=\"Warning\">&Oslash;</span>";
+	static noData(f) { //The string used to indicate this cell has no data
+		switch(f) {
+			case "txt": return "Ø";
+			default: return "<span class=\"Warning\">&Oslash;</span>";
+		}
 	}
-	static header(o) { //Return the html header for the row/col object provided
+	static header(o, F) { //Return the header for the row/col object provided
 		if(o.Unit) {
-			let html = "<span class=\"Header_Conc\" name=\"" + o.Name + "\">";
-			if(this.Report.Options.LogScale.getValue()) {html += this.headerConcLog(o.Name)}
-			else {html += o.Name}
-			return html + "</span>";
+			let name = o.Name;
+			if(F.Log) {name = this.headerConcLog(o.Unit, F.Format)}
+			switch(F.Format) {
+				case "html": return "<span class=\"Header_Conc\" name=\"" + o.Name + "\">" + name + "</span>";
+				case "txt": return name;
+			}
 		}
 		return o.Name;
 	}
-	static headerConcLog(name, shift) { //Wrap the name into a log10(...) text
+	static headerConcLog(name, f, shift) { //Wrap the name into a log10(...) text
 		if(shift) {name = Unit.rootForUnit(name)}
-		return "Log<sub>10</sub>(" + name + ")";
+		switch(f) {
+			case "html": return "Log<sub>10</sub>(" + name + ")";
+			case "txt": return "Log10(" + name + ")";
+		}
 	}
-	static valueHeader(v) { //Return the html header for the value object v
-		if(v.Type == "Conc") {
+	static valueHeader(v, F, span, dir) { //Return the html header for the value object v
+		let dirspan = "";
+		if(span) { //Cases where span is undefined or zero are naturally excluded here
+			switch(F.Format) {
+				case "html": 
+					if(dir == "Row") {dirspan = " rowspan=\"" + span + "\""}
+					else {dirspan = " colspan=\"" + span + "\""}
+					break;
+				case "txt": 
+					if(dir === undefined || dir == "Col") {dirspan = Analyzer.blankCell("txt").repeat(span - 1)} //No need to span for rows, done elsewhere
+					break;
+			}
+		}
+		if(v.Type == "Conc") { //Process concentration headers differently
 			let log = this.logValue(v);
 			let out = "";
-			if(this.Report.Options.LogScale.getValue()) {out = this.roundNb(log)}
-			else {out = this.roundNb(v.Value)}
-			return "<th class=\"Value_PlaceHolder Header_Conc\" value=\"" + v.Value + "\" logvalue=\"" + log + "\" shift=\"" + Unit.shiftForUnit(v.Name) + "\">" + out + "</th>";
+			switch(F.Format) {
+				case "html":
+					if(F.Log) {out = this.roundNb(log)}
+					else {out = this.roundNb(v.Value)}
+					return "<th" + dirspan + " class=\"Value_PlaceHolder Header_Conc\" value=\"" + v.Value + "\" logvalue=\"" + log + "\" shift=\"" + Unit.shiftForUnit(v.Unit) + "\">" + out + "</th>";
+				case "txt": //For text export, format also depends on the displayed option
+					if(F.Log) {
+						if(F.Displayed) {return this.roundNb(log) + dirspan + "\t"}
+						else {return log + dirspan + "\t"}
+					}
+					else {
+						if(F.Displayed) {return this.roundNb(v.Value) + dirspan + "\t"}
+						else {return v.Value + dirspan + "\t"}
+					}
+			}
 		}
-		return "<th>" + v.Name + "</th>";
+		if(v.Type == "Range") { //For ranges, output the resolved name
+			let resolved = this.Report.ResolvedNames[v.OriginIndex];
+			if(resolved !== undefined) {
+				let name = resolved[v.RangeIndex - 1];
+				if(name !== undefined) {
+					switch(F.Format) { //These cases are for regular headers (not concentrations)
+						case "html": return "<th" + dirspan + " RootName=\"" + v.Name + "\">" + name + "</th>";
+						case "txt": return name + dirspan + "\t";
+					}
+				}
+			}
+		}
+		switch(F.Format) { //These cases are for regular headers (not concentrations)
+			case "html": return "<th" + dirspan + ">" + v.Name + "</th>";
+			case "txt": return v.Name + dirspan + "\t";
+		}
 	}
-	static cellForValue(v, I) { //prepare a cell to hold a numeric or textual value
+	static cellForValue(v, F, I) { //prepare a cell to hold a numeric or textual value
+		if(F.Format == "txt") { //This case is pretty simple
+			if(v === "" || v === undefined) {return this.noData("txt")} //Mind the type equality, because 0 == "" evaluates to true
+			if(F.Displayed) {return this.roundNb(v)}
+			else {return v}
+		}
 		let c = " class=\"";
 		let inner = v;
 		let value = "";
 		let title = "";
-		if(v === "" || v === undefined) {inner = this.noData()} //Mind the type equality, because 0 == "" evaluates to true
+		if(v === "" || v === undefined) {inner = this.noData(F.Format)} //Mind the type equality, because 0 == "" evaluates to true
 		if(I) { //Look the options
 			if(I.Class) {c += I.Class + " "}
 			if(I.Border && I.Index > 0) {c += "BorderLeft "}
@@ -85,25 +137,88 @@ class Analyzer {
 		}
 		return "<td" + c + "\"" + value + title + ">" + inner + "</td>";
 	}
-	static arrayToRow(array, I) { //Convert the array of values into an innerTable with a single row
-		let html = "";
+	static arrayToRow(array, F, I) { //Convert the array of values into an innerTable with a single row
+		let out = "";
 		let maxLength = 0;
-		if(array.length == 0) {html += "<td>" + this.noData() + "</td>"}
-		else {
+		if(array.length == 0) {
+			switch(F.Format) {
+				case "txt": out += this.noData("txt"); break;
+				case "html": out += "<td>" + this.noData() + "</td>"; break;
+			}
+		}
+		if(F.Format == "txt") { //Case txt is simple
+			array.forEach(function(e, i) {
+				if(i > 0) {out += "\t"}
+				out += this.cellForValue(e, F);
+			}, this);
+			if(I.ColumnLength !== undefined) { //A padding is needed to reach the max number of columns
+				let n1 = I.ColumnLength - array.length;
+				if(array.length == 0) {n1--} //Not sure why, but needed to work
+				if(n1 > 0) {out += this.blankCell("txt").repeat(n1)}
+			}
+			return out;
+		}
+		else { //Following code is only for html
 			array.forEach(function(e, i) {
 				let o = {Border: true, Index: i, ReturnLength: true}
 				if(I) {
 					if(I.Types) {o.Type = I.Types[i]}
 					if(I.Titles) {o.Title = I.Titles[i]}
 				}
-				let out = this.cellForValue(e, o);
-				html += out.HTML;
-				maxLength = Math.max(maxLength, out.Length); //Log the max length of the string to display
+				let cell = this.cellForValue(e, F, o);
+				out += cell.HTML;
+				maxLength = Math.max(maxLength, cell.Length); //Log the max length of the string to display
+			}, this);
+			//
+			//Sounded like a good idea to have same behavior as the txt file (aligned to the left)
+			//But it will be more complicated than that when there are multiple data in the json.Data array
+			//Must have a new strategy in place if this is really needed.
+			//Somehow the centered appearance in html is probably just as good...
+			//
+			/*if(I.ColumnLength !== undefined) { //A padding is needed to reach the max number of columns
+				let n2 = I.ColumnLength - array.length;
+				if(array.length == 0) {n2--} //Not sure why, but needed to work
+				if(n2 > 0) {out += this.blankCell("html").repeat(n2)}
+			}*/
+			return "<td class=\"Border\"><div class=\"InnerTable_Wrapper\"><table class=\"InnerTableRow\" style=\"min-width: " + this.rowWidth(array.length, maxLength) + "\"><tr>" + out + "</tr></table></div></td>";
+		}
+	}
+	static arrayToColumn(i, json, F, headers) { //Produce a column output for the subgroup object i
+		switch(F.Format) {
+			case "txt": return this.arrayToColumn_Txt(i, json, F, headers);
+			case "html": 
+				let out = "";
+				json.Groups.forEach(function(c) { //Loop the cols	
+					out += this.arrayToColumn_HTML(c.DataPoints[i], F).HTML;
+				}, this);
+				return out;
+		}
+	}
+	static arrayToColumn_Txt(i, json, F, headers) { //Produce a column output for the subgroup object i, in a txt format
+		let out = "";
+		let MaxRow = json.Groups.reduce(function(acc, val) {return Math.max(acc, val.DataPoints[i].length)}, 0); //Maximum number of row to expect
+		let gap = this.blankCell("txt"); //Gap to append to each row to keep the alignment
+		if(F.Gap !== undefined) {gap = this.blankCell("txt").repeat(F.Gap)} //Use the precalculated value if it exists
+		else { //In case of headers, a second gap is needed
+			if(headers !== undefined && headers !== null) {
+				if(headers.Rows !== undefined) {gap += this.blankCell("txt")} 
+			}
+		}
+		if(MaxRow == 0) {return this.noData("txt")}
+		for(let j=0; j<MaxRow; j++) { //Produce the row-per-row output
+			if(j > 0) {out += "\n" + gap}
+			json.Groups.forEach(function(g) { //Loop the columns
+				let val = g.DataPoints[i][j]; //Value at this location
+				if(val !== undefined) {out += this.cellForValue(val, F)} //Add it if defined
+				else { //No value defined here
+					if(j == 0) {out += this.noData("txt")} //If this was the first row, it means the column is empty
+				}
+				out += "\t"; //In all cases, insert a gap to keep the alignment
 			}, this);
 		}
-		return "<div class=\"InnerTable_Wrapper\"><table class=\"InnerTableRow\" style=\"min-width: " + this.rowWidth(array.length, maxLength) + "\"><tr>" + html + "</tr></table></div>";
+		return out;
 	}
-	static arrayToColumn(array, columnIndex, I) { //Convert the array provided into a single column table and compute the stats for it
+	static arrayToColumn_HTML(array, F, I) { //Convert the array provided into a single column html table
 		let options = this.Report.Options;
 		let style = "";
 		if(options.Collapse.getValue()) {
@@ -112,47 +227,26 @@ class Analyzer {
 			if(array.length <= row) {style += "; overflow-y: unset\""}
 			else {style += "; overflow-y: scroll\""}
 		}
-		let html = "<td class=\"Border\"";
+		//let html = "<td class=\"Border\"";
 		let l = array.length;
-		if(l > 1) {html += " style=\"vertical-align: top\""}
-		html += "><div class=\"InnerTable_Wrapper\"" + style;
-		if(I && I.Sync) {html += " onmouseenter=\"Analyzer.scrollActive = " + columnIndex + "\" onscroll=\"Analyzer.syncScrolling()\""}
+		//if(l > 1) {html += " style=\"vertical-align: top\""} //Maybe better not to use it, to be consistent in formatting
+		let html = "<td class=\"Border\" style=\"vertical-align: top\">";
+		html += "<div class=\"InnerTable_Wrapper\"" + style;
+		if(I && I.Sync) {html += " onmouseenter=\"Analyzer.scrollActive = " + I.ColumnIndex + "\" onscroll=\"Analyzer.syncScrolling()\""}
 		html += "><table class=\"InnerTable\">";
-		let stats = {Total: 0, Avg: "", SD: "", CV: "", N: 0} //Keep defaults as text so that nothing is displayed if no or not enough elements to calculate it
-		let numericOnly = []; //An array to store only numeric values, in case some text is also present
 		array.forEach(function(val, i) {
 			let v = val;
 			if(val.Value !== undefined) {v = val.Value}
-			let isNumeric = this.isNumeric(v);
 			let type = "#";
-			if(isNumeric == false) {type = "Text"}
-			else { //Push the numeric values only and exclude the text
-				numericOnly.push(v);
-				stats.Total += v;
-			} 
-			html += "<tr>" + this.cellForValue(v, {Type: type, Class: val.Class}) + "</tr>"; 
+			if(this.isNumeric(v) == false) {type = "Text"}
+			html += "<tr>" + this.cellForValue(v, F, {Type: type, Class: val.Class}) + "</tr>"; 
 		}, this);
 		if(l == 0) {html += "<tr><td>" + this.noData() + "</td></tr>"} //The array was empty
 		html += "</table></div></td>";
-		let n = numericOnly.length;
-		if(n > 0) { //At least one numeric value was found
-			let avg = stats.Total / n;
-			stats.Avg = avg;
-			if(n > 1) {
-				let variance = numericOnly.map(function(v) {//return an array for which each element x is now (x-avg)^2
-					return(Math.pow(v - avg, 2));
-				}); 
-				let sumVariance = variance.reduce(function(a, b) {return(a + b)});
-				let SD = Math.sqrt(sumVariance / n); //Population SD, computed with 1/N (For Sample SD, we should use 1/N-1, but population SD is more natural: [8, 12] => pSD = 2; sSD = 2.82)
-				stats.SD = SD;
-				stats.CV = 100 * SD / avg;
-			}
-		}
-		stats.N = l;
-		if(n != l) {stats.N = n + " (" + l + ")"} //Inform that not all values were used
+		let stats = Coordinate.statValue(array);
 		return {HTML: html, Stats: stats}
 	}
-	static objectToTable(o, I) { //Return an html table representing the array of object passed. Each object should have a "Values" property, containing the array of values
+	/*static objectToTable(o, I) { //Return an html table representing the array of object passed. Each object should have a "Values" property, containing the array of values
 		let html = "";
 		html += "<table class=\"OuterTable\">";
 		html += "<tr><td></td>"; //Table headers, leave an empty columns for the legend; use <td> so that it has no borders
@@ -192,7 +286,7 @@ class Analyzer {
 		html += "</tr></tfoot>";
 		html += "</table>";
 		return {HTML: html, Stats: stats}
-	}
+	}*/
 	static syncScrolling() { //Sync column scrolling within a table
 		let t = event.target;
 		let tr = t.parentElement;
@@ -210,23 +304,10 @@ class Analyzer {
 			}
 		}
 	}
-	static groupedTable(rows, cols, values, aggregation) { //Build a 2d/grouped table using the rows/cols data and values provided. Rows/Cols are arrays of objects that include a Values property, in which the tags array hold the index where to find the values in the values array provided
-		let html = "";
-		html += "<table class=\"OuterTable\">";
-		let headTop = "<tr><td rowspan=\"2\"></td><td rowspan=\"2\"></td>"; //Table headers, leave two empty columns for the legend; use <td> so that it has no borders
-		let headBottom = "<tr>";
-		cols.forEach(function(col) { //Travel the cols to prepare the headers
-			let l = col.Values.length;
-			if(l == 1) {headTop += "<th rowspan = \"2\">" + this.header(col) + "</th>"} //Only one value for this group
-			else { //A group with more than one values
-				headTop += "<th colspan=\"" + col.Values.length + "\">" + this.header(col) + "</th>"; //The header for the group
-				col.Values.forEach(function(v) { //Append all the values 
-					headBottom += this.valueHeader(v);
-				}, this);
-			}
-		}, this);
-		html += headTop + "</tr>" + headBottom + "</tr>";
-		rows.forEach(function(row, i) { //Travel the rows
+	/*static groupedTable(header, rows, cols, values, aggregation) { //Build a 2d/grouped table using the rows/cols data and values provided. Rows/Cols are arrays (lvl1, lvl2) containing array of objects that include a Values property, in which the tags array hold the index where to find the values in the values array provided
+		let html = "<table class=\"OuterTable\">" + header;
+		let rowSpan = rows[1].reduce(function(acc, row) {acc += row.Values.length}, 0); //Get the total span needed for the level 2, if any
+		rows[0].forEach(function(row, i) { //Travel the rows level 1
 			let r = row.Values.length;
 			if(r == 1) { //This group has only one value, it needs only one row
 				html += "<tr><th>" + this.header(row) + "</th>" + this.valueHeader(row.Values[0]); //There is only one value
@@ -268,9 +349,7 @@ class Analyzer {
 		}, this);
 		return html;
 	}
-//*************************************************
 //Methods for the export of data tables to txt file
-//*************************************************
 	static tableToString(table, I) { //Convert the DOM element table into a text string suitable for export as a tab-delimited file
 		let txt = "";
 		if(I && I.Title) {txt = I.Title + "\n"} //Add a title if needed
@@ -462,5 +541,74 @@ class Analyzer {
 			else {txt += "\t"}
 		}
 		return txt;
+	}
+	*/
+//************************************************************************
+//NEW METHOD USING A COMMON JSON OBJECT AS STANDARD BETWEEN HTML/TXT/GRAPH
+//************************************************************************
+	static encodeJSON(rows, cols, data) { //Encode the incoming rows, cols and data into a common JSON object, and return it
+		let o = {Data: []}; //Initialize the object
+		let Flat = {Lvl1: {Rows: [], Cols: []}, Lvl2: {Rows: [], Cols: []} };
+		let RowHeaders = GroupTable.flattenLevel(rows[0], Flat.Lvl1.Rows); //Start by flattening all this mess and build the headers, for each level 1
+		let ColHeaders = GroupTable.flattenLevel(cols[0], Flat.Lvl1.Cols);
+		if(RowHeaders !== undefined || ColHeaders !== undefined) { //If at least one header exists
+			o.Headers = {Rows: RowHeaders, Cols: ColHeaders}
+		}
+		GroupTable.prepareWrapping(rows, cols, Flat, o); //Prepare the wrapping based on lvl2
+		GroupTable.populateData(o.Data, data)//Compute the datapoints arrays
+		return o;
+	}
+	static exportJSON(j, format) { //Convert the json object into a readable string, html or txt depending on the format
+		let log = undefined;
+		if(this.Report.Options.LogScale !== undefined) {log = this.Report.Options.LogScale.getValue()} //Not all reports support this option
+		let F = { //Formatting object
+			Displayed: (this.Report.Options.ExportFormat.getValue() == 1), //true means use the displayed data,
+			Log: log,
+			Format: format,
+			Aggregation: (this.Report.UI.DataView.Selected || undefined),
+		}; 
+		if(j.Wrapping) { //In case of wrapping, a wrapper table is necessary
+			let table = new WrapTable(j.Wrapping); //Returns a WrapTable object that can be interacted with
+			return table.export(j, F); //Returns the final html string
+		}
+		else {
+			return GroupTable.export(j.Data[0], F, j.Headers);
+		}
+	}
+	static tableStart(f) {
+		if(f == "html") {return "<table class=\"OuterTable\">"}
+		return "";
+	}
+	static tableEnd(f) {
+		if(f == "html") {return "</table>"}
+		return "";
+	}
+	static rowStart(f) {
+		if(f == "html") {return "<tr>"}
+		return "";
+	}
+	static rowEnd(f) {
+		switch(f) {
+			case "html": return "</tr>";
+			case "txt": return "\n";
+		}
+	}
+	static blankCell(f) {
+		switch(f) {
+			case "html": return "<td></td>";
+			case "txt": return "\t";
+		}
+	}
+	static blankHeader(f, I) {
+		switch(f) {
+			case "html": 
+				let span = "";
+				if(I) {
+					if(I.Dir == "Row") {span = " rowspan=\"" + I.Span + "\""}
+					else {span = " colspan=\"" + I.Span + "\""}
+				}
+				return "<th" + span + "></th>";
+			case "txt": return "\t";
+		}
 	}
 }

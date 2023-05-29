@@ -15,6 +15,7 @@
 .OuterTable th {
 	border: 1px solid black;
 	padding: 0.2em 1em;
+	white-space: nowrap;
 }
 .OuterTable tfoot {
 	background-color: lavender;

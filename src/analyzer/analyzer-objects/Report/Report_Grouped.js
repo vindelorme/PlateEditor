@@ -5,55 +5,109 @@ class Report_Grouped extends Report {
 	constructor(o, I) {
 		super(o, I);
 		let source = window.opener.Grouped;
-		this.Areas = source.Areas.map(function(a) {a.Available = true; a.Values = [{Name: a.Name, Value: a.Name, Tags: a.Tags}]; return a}); //Mark all items as available
-		this.Ranges = source.Ranges.map(function(r) {r.Available = true; return r});
-		this.Concentrations = source.Conc.map(function(c) {c.Available = true; return c});
+		this.RootID = "Form_AddData";
+		this.AvailableID = this.RootID + "_Available";
+		this.SelectedID = this.RootID + "_Selected";
+		this.Areas = source.Areas.map(function(a, i) { //Slightly update the incoming objects with additional properties
+			a.Available = true; //Mark all items as available
+			a.Category = "Areas"; //Add some properties to facilitate interaction during the drag-and-drop operations
+			a.OriginID = this.AvailableID + "_Areas";
+			a.OriginIndex = i;
+			a.Values = [{Name: a.Name, Value: a.Name, Tags: a.Tags}];
+			return a;
+		}, this); 
+		this.Ranges = source.Ranges.map(function(r, i) {
+			r.Available = true;
+			r.Category = "Ranges";
+			r.OriginID = this.AvailableID + "_Ranges";
+			r.OriginIndex = i;
+			return r;
+		}, this);
+		this.Concentrations = source.Conc.map(function(c, i) {
+			c.Available = true;
+			c.Category = "Concentrations";
+			c.OriginID = this.AvailableID + "_Concentrations";
+			c.OriginIndex = i;
+			return c;
+		}, this);
 		this.Menu.addTabs([ //Prepare the menu
 			{Label: "Data selected", SetActive: true,
 				Content: {
 					Type: "HTML",
 					Value: "<div id=\"Report_Ready\"><span class=\"Warning\">Resolving definitions, please wait...</span></div>" +
-					"<fieldset id=\"AddRowCol\"><div id=\"Data_Options\"></div></fieldset>" +
-					"<fieldset><legend>Rows</legend><div style=\"max-height: 500px; overflow: auto\" id=\"SelectedRows\"></div></fieldset>" +
-					"<fieldset><legend>Columns</legend><div style=\"max-height: 500px; overflow: auto\" id=\"SelectedCols\"></div></fieldset>",
+					"<fieldset id=\"AddRowCol\"><div id=\"Data_Options\"></div></fieldset>",
 				}
 			},
 		]);
-		//GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>");
-		this.UI.Rows = new RespTable({ID: "SelectedRows", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(O) {
-			if(O === undefined || O.Action != "Select") {this.compute()}
-		}.bind(this)});
-		this.UI.Cols = new RespTable({ID: "SelectedCols", Fields: ["Name"], RowNumbers: true, Array: [], onDelete: function(e) {e.Available = true}, onUpdate: function(O) {
-			if(O === undefined || O.Action != "Select") {this.compute()}
-		}.bind(this)});
-		this.UI.DataView = LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Avg, SD, N", "Average", "Column", "Row"], Preserve: true, Change: this.compute.bind(this),
+		this.UI.Selected = { //Object to hold the selected data
+			init: function() {}, //dummy function to allow this object to pass the initialization step without error
+			Rows: [[], []],
+			Cols: [[], []],
+		};
+		this.UI.DataView = LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Avg, SD, N", "Average", "Column", "Row"], Preserve: true, Change: this.update.bind(this),
 			Title: "Indicates how multiple values are displayed in the grouped table: arrayed in a single column or in consecutive rows; show only the average; show the average, standard deviation and number of samples"
 		});
 		let buttons = LinkCtrl.buttonBar([
-			{Label: "Add Rows", Title: "Click here to add rows of data to the summary table", Click: function() {this.addData("Rows")}.bind(this)},
-			{Label: "Add Columns", Title: "Click here to add columns of data to the summary table", Click: function() {this.addData("Cols")}.bind(this)},
+			{Label: "Select Data", Title: "Click here to add rows and columns of data to the summary table", Click: function() {this.addData()}.bind(this)},
 		]);
+		//IMPLEMENT THE DISABLE METHOD??
+		//this.Options.CV.Disabled = true;
+		//this.Options.CV.remove().init();
 		GetId("AddRowCol").prepend(buttons);
-		/*this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
-			let d = r.Definition;
-			if(d !== undefined) {
-				let sel = LinkCtrl.new("Select", {ID: "Definitions_Select", NewLine: true, Index: i, Default: 0, List: d.PlatesID, Label: d.Area.Name, Title: "The plate to use for the resolution of the names for this range", Change: function(v) {
-					this.resolveNames(d, i).then(function(names) { //Fetch the names for the plate selected for this range
-						this.ResolvedNames[i] = names; //Update the name property for this definition
-						this.updateNames(d.Area, i); //Update the diplayed names
-					}.bind(this));
-					if(v !== undefined) { //If the change is triggered by a pair setter, v will be undefined and there is no need to check the status. But if the select is changed manually by the user, need to check
-						this.pairStatus(this.UI.Plate.getValue(), {Check: true}); //Update the pair status
-					}
-				}.bind(this)});
-				if(sel.List.length > 1) {sel.NavBar = true; sel.Lookup = {Active: false} }
-				if(i > 0) {sel.Preserve = true}
-				this.UI["Definition_" + i] = sel;
-			}
-		}, this);*/
 		this.prepareDefinition();
-		GetId("Output").innerHTML = "<p class=\"Note\">Add Rows and Columns of data to start</p>"; //Welcome message
+		Report_Grouped.welcome(); //Welcome message
 		return this;
+	}
+	//Static Methods
+	static welcome() { //Display the welcome message in the output
+		GetId("Output").innerHTML = "<p class=\"Note\">Click on the 'Select Data' button located under the 'Data Selected' panel of the left menu to add rows and columns of data</p>";
+	}
+	static dragStart(e, I) { //Start dragging the data
+		e.dataTransfer.setData("text/plain", e.target.id);
+		this.Moving = {Item: Analyzer.Report[I.Category][I.OriginIndex], Origin: I.OriginID} //Log the object corresponding to the item moved;
+	}
+	static dragOver(e) { //Drag over the dropZone
+		e.preventDefault();
+	}
+	static dragEnter(e) { //Entering the drop zone
+		e.preventDefault();
+		let t = e.target;
+		if(t.classList.contains("Droppable") == false) {t = t.parentElement} //If the drop targets an element within the dropzone, go back one level
+		let active = document.getElementsByClassName("Droppable Droppable_Hover"); //When the drag is done too rapidly, the dragenter event may fire twice, and the leave fires later for the 1st element
+		let l = active.length; //Here we check for elements already having the class
+		if(l>0) { //If some elements already have the class, stripped them from it
+			for(let i=0;i<l;i++) {active[i].className = "Droppable"}
+		}
+		t.className = "Droppable Droppable_Hover"; //Change the class
+	}
+	static dragLeave(e) { //Leaving the drop zone
+		e.preventDefault();
+		let t = e.target; //The element that we are leaving
+		if(t.classList.contains("Droppable") == false) {t = t.parentElement} //If the leave targets an element within the dropzone, go back one level
+		let r = e.relatedTarget; //For a dragleave event, this points to the element the pointing device entered to
+		if(t.classList.contains("Droppable_Hover") == true && r.classList.contains("SmallTitle") == false && r.classList.contains("Selectable_Row") == false && r.classList.contains("Droppable_Hover") == false) { //Should trigger when leaving an active dropzone, without entering an element within a dropzone, or the same active dropzone itself
+			t.className = "Droppable"; //Remove the class
+		}
+	}
+	static drop(e, I) { //Drop on the dropZone
+		e.preventDefault();
+		if(this.Moving === undefined) {return} //Something wrong
+		let source = GetId(e.dataTransfer.getData("text/plain"));
+		source.remove(); //Remove the element from the menu
+		this.Moving.Item.Available = false; //Log the object as unavailable
+		this.Moving.Item.NewDrop = I; //Log the dropzone of this element
+		this.Moving = undefined; //Release the log
+		Analyzer.Report.updateSelectedData({Action: "Drop"}); //This will redraw the drop table based on the action performed
+	}
+	static dropDelete(e) { //Drop on the delete dropZone
+		e.preventDefault();
+		if(this.Moving === undefined) {return} //Something wrong
+		this.Moving.Item.Available = true; //Make it available again
+		this.Moving.Item.NewDrop = {Type: "Removed"}; //Release the drop location
+		let source = GetId(e.dataTransfer.getData("text/plain"));
+		GetId(this.Moving.Origin).appendChild(source); //Move source back to the main menu
+		this.Moving = undefined; //Release the log
+		Analyzer.Report.updateSelectedData({Action: "Drop"}); //This will redraw the drop table based on the action performed
 	}
 	//Methods
 	do() {
@@ -69,106 +123,162 @@ class Report_Grouped extends Report {
 		}
 		return this;
 	}
-	addData(entry) { //Addition of rows/cols into the data tables
-		let id = "Form_AddData";
-		let available = id + "_Available";
-		let selected = id + "_Selected";
+	addData() { //Addition of rows/cols into the data tables
+		let id = this.RootID;
+		let selected = this.SelectedID;
+		let available = this.AvailableID;
 		let availableMenu = new TabControl({
-			ID: available,
+			ID: this.AvailableID,
 			Layout: "Menu",
 			Tabs: [
-				{Label: "Areas", Active: true, Content: {Type: "HTML", Value: this.available("Areas", available, selected)} },
-				{Label: "Ranges", Content: {Type: "HTML", Value: this.available("Ranges", available, selected)} },
-				{Label: "Concentrations", Content: {Type: "HTML", Value: this.available("Concentrations", available, selected)} },
+				{Label: "Areas", Active: true, Content: {Type: "HTML", Value: this.available("Areas", available)} },
+				{Label: "Ranges", Content: {Type: "HTML", Value: this.available("Ranges", available)} },
+				{Label: "Concentrations", Content: {Type: "HTML", Value: this.available("Concentrations", available)} },
 			]
 		});
 		let html = "";
-		html += "<fieldset style=\"width:350px; overflow: auto; float: left\"><legend>Data available</legend><p class=\"Note\">Click to select data</p><div id=\"" + available + "\"></div></fieldset>";
-		html += "<fieldset style=\"margin-left: 400px;\"><legend>Selected</legend><p class=\"Note\">Click to unselect data</p><div id=\"" + selected + "\" style=\"border-top: 1px solid silver; float: left\"></div></fieldset>";
+		html += "<fieldset style=\"width:350px; overflow: auto; float: left\"><legend>Data available</legend><p class=\"Note\">Drag and drop the data from here to the table on the right panel</p><div id=\"" + available + "\"></div></fieldset>";
+		html += "<fieldset style=\"margin-left: 400px;\"><legend>Selected</legend><div id=\"" + selected + "\"></div></fieldset>";
 		Form.open({
-			ID: id,
-			Size: 800,
-			Title: "Add " + entry,
+			ID: this.RootID,
+			Size: 900,
+			Title: "Add Data",
 			HTML: html,
 			Buttons: [
 				{Label: "Ok", Click: function() {
-					let rows = GetId(selected).children;
-					this.updateSelectedData(entry, rows);
+					this.updateSelectedData({Action: "Ok"});
 					Form.close(id);
 				}.bind(this)},
 				{Label: "Cancel", Click: function() {
-					let rows = GetId(selected).children;
-					this.updateSelectedData(entry, rows, {Cancel: true}); //Cancel flag
+					this.updateSelectedData({Action: "Cancel"}); //Cancel flag
 					Form.close(id);
 				}.bind(this)}
 			],
 			onInit: function() {
 				availableMenu.init();
-				let rows = GetId(id).getElementsByClassName("Selectable_Row");
-				let l = rows.length;
-				for(let i=0; i<l; i++) {
-					rows[i].addEventListener("click", function(e) { //Initialize the click event on each row
-						this.moveRow(e.target, available, selected);
-					}.bind(this));
-				}
+				GetId(selected).innerHTML = this.selected();
 			}.bind(this),
 			onCancel: function() {
-				let rows = GetId(selected).children;
-				this.updateSelectedData(entry, rows, {Cancel: true})
+				this.updateSelectedData({Action: "Cancel"}); //Cancel flag
 			}.bind(this),
 		});
 	}
-	available(category, sourceID, targetID) { //Create an html list of the items available for the desired category
+	htmlForItem(item) { //Prepare an html string to represent the item passed, as a draggable element
+		let html = "";
+		let toDisplay = item.Name;
+		if(item.Unit) {toDisplay = item.Unit + " (" + item.Values.length + " values)"}
+		if(item.Type == "Range") {toDisplay += " (" + item.Values.length + " items)"}
+		html += "<div id=\"" + item.OriginID + "_" + item.OriginIndex + "\" draggable=\"true\" ondragstart=\"Report_Grouped.dragStart(event, {Category: '" + item.Category + "', OriginID: '" + item.OriginID + "', OriginIndex: '" + item.OriginIndex + "'})\" class=\"Selectable_Row\"";
+		html += ">" + toDisplay + "</div>";
+		return html;
+	}
+	available(category, sourceID) { //Create an html list of the items available for the desired category
 		let id = sourceID + "_" + category;
 		let html = "<div id=\"" + id + "\" style=\"border-top: 1px solid silver\">";
 		let source = this[category];
-		source.forEach(function(s, i) {
-			let toDisplay = s.Name;
-			if(s.Unit) {toDisplay = s.Unit + " (" + s.Values.length + " values)"}
-			if(s.Type == "Range") {toDisplay += " (" + s.Values.length + " items)"}
-			html += "<div class=\"Selectable_Row\" category=\"" + category + "\" originID=\"" + id + "\" originIndex=\"" + i + "\"";
-			if(s.Available == false) {html += " style=\"display: none\""}
-			html += ">" + toDisplay + "</div>";
-		});
+		source.forEach(function(s) {
+			if(s.Available) {html += this.htmlForItem(s)}
+		}, this);
 		html += "</div>";
 		return html;
 	}
-	moveRow(div, available, selected) { //Swap the clicked row from available/selected tables
-		let cat = div.getAttribute("category");
-		let index = Number(div.getAttribute("originIndex"));
-		let obj = this[cat][index];
-		if(obj.Available) { //Data is available, move to the selected box
-			obj.Available = false;
-			GetId(selected).insertBefore(div, null); //Move the div
+	selected(I) { //Create the html of the drop zone for draggable items populated with the previously logged selection (UI.Selected) or from the selection object passed
+		let log = I; //Use the incoming object...
+		if(I === undefined) {log = this.UI.Selected} //... Or the logged selection if not available
+		let html = "<table>";
+		html += "<tr> <td style=\"width: 1.1em\"></td> <td></td> <td style=\"text-align: center\"><div style=\width: 194px;\"><b>Columns</b></div>"; //First row start
+		html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Cols', Level: 2})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\" style=\" "; //Level 2 Col drop
+		if(log.Cols[0].length == 0) {html += " display: none;"} //Hide the level 2 if nothing present in level 1
+		html += "\"><p class=\"SmallTitle\" style=\"color: darkred\">Level 2</p>"; 
+		log.Cols[1].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
+		html += "</div>";
+		html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Cols', Level: 1})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\""; //Level 1 Col drop
+		html+= "style=\" \"><p class=\"SmallTitle\" style=\"color: blue\">Level 1</p>"; 
+		log.Cols[0].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
+		html += "</div>";
+		html += "</td> </tr>"; //End Second Row
+		html += "<tr> <td style=\"writing-mode: sideways-lr; width: 1.1em;\"><b>Rows</b></div></td><td>"; //Second row start
+		html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Rows', Level: 2})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\" style=\" "; //Level 2 Row drop
+		if(log.Rows[0].length == 0) {html += " display: none"} //Hide the level 2 if nothing present in level 1
+		html += "\"><p class=\"SmallTitle\" style=\"color: darkred\">Level 2</p>"; 
+		log.Rows[1].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
+		html += "</div>";
+		html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Rows', Level: 1})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\""; //Level 1 Row drop
+		html += "style=\" \"><p class=\"SmallTitle\" style=\"color: blue\">Level 1</p>"; 
+		log.Rows[0].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
+		html += "</div>";
+		html += "</td><td ondrop=\"Report_Grouped.dropDelete(event)\" ondragover=\"Report_Grouped.dragOver(event)\" style=\"text-align: center\">";
+		html += "<div class=\"LinkCtrl_Icon LinkCtrl_IconBig\" style=\"background-position: -200px 0px; opacity: 20%\"></div>"; //Trash bin icon
+		html += "<p class=\"Note\" >Drop here to remove</p></td> </tr>"; //Last cell //style=\"text-align: center\"
+		html += "</table>";
+		return html;
+	}
+	updateSelectedData(I) { //Update the UI.Selected object based on the Drop property of the Areas/Ranges/Concentrations object
+		if(I === undefined) {return}
+		let source = [this.Areas, this.Ranges, this.Concentrations]; //Need to process all three
+		let selected = {Rows: [[], []], Cols: [[], []]}; //Initialize empty object for logging
+		if(I.Action == "Cancel") { //In this case, ignore the changes: NewDrop properties are deleted and previous Drop don't change
+			source.forEach(function(cat) { //For each category
+				cat.forEach(function(item) { //For each item in a category
+					item.NewDrop = undefined; //Ignore modifications made
+					if(item.Drop !== undefined) {item.Available = false} //Update the status, should remain available only if it has no drop defined
+					else {item.Available = true}
+				});
+			});
 		}
-		else { //Not available, remove it from the selected box
-			obj.Available = true;
-			let target = GetId(div.getAttribute("originID"));
-			let childs = target.children;
-			let l = childs.length;
-			let inserted = false;
-			let i = 0;
-			while(inserted == false && i<l) { //Find the insertion point
-				if(childs[i].getAttribute("originIndex") > index) { //We need the object with the index just above
-					target.insertBefore(div, childs[i]);
-					inserted = true;
+		if(I.Action == "Ok") { //Ok scenario, valid the changes by switching the NewDrop as Drop and rebuild the UI.Selected object
+			source.forEach(function(cat) { //For each category
+				cat.forEach(function(item) { //For each item in a category
+					if(item.NewDrop !== undefined) { //Items that were moved need update
+						if(item.NewDrop.Type == "Removed") { //In this case, the drop should be destroyed
+							item.Drop = undefined;
+						}
+						else { //Otherwise proceed normally
+							item.Drop = item.NewDrop;
+						}
+						item.NewDrop = undefined; //Reset the change
+					}
+					if(item.Drop !== undefined) { //If a Drop location remains here, log it at the rignt location
+						selected[item.Drop.Type][(item.Drop.Level-1)].push(item);
+					}
+				});
+			});
+			this.UI.Selected = selected; //Update the Selected object
+			this.compute(); //Compute the tables
+		}
+		if(I.Action == "Drop") { //A new drop occured: prepare an updated selected object, clean it and use it to prepare the updated drop table
+			source.forEach(function(cat) { //For each category
+				cat.forEach(function(item) { //For each item in a category
+					if(item.NewDrop !== undefined && item.NewDrop.Type != "Removed") { //Item was moved, but not to the trashbin, log it at its new location
+						selected[item.NewDrop.Type][(item.NewDrop.Level-1)].push(item);
+					}
+					else { //For other items, use their Drop location if they are not labelled as removed
+						if(item.Drop !== undefined && (item.NewDrop === undefined || item.NewDrop.Type != "Removed")) { //If a Drop location remains here, log it at the rignt location
+							selected[item.Drop.Type][(item.Drop.Level-1)].push(item);
+						}
+					}
+				});
+			});
+			selected = this.cleanSelected(selected); //Clean the selected object
+			GetId(this.SelectedID).innerHTML = this.selected(selected); //Redraw the droptable
+		}
+		return this;
+	}
+	cleanSelected(I) { //Clean the selected object provided by removing any useless level 2
+		[I.Rows, I.Cols].forEach(function(l) { //Process both the array of Rows and Cols
+			if(l[0].length == 0) { //If the first level is empty, check that the second level is empty too, or move its content back to the first level
+				if(l[1].length > 0) { //There are stuff here that need to be moved
+					l[0] = l[1]; //Move them to level 1
+					l[0].forEach(function(item) { //Update the Drop/NewDrop location to match
+						if(item.NewDrop !== undefined) {item.NewDrop.Level = 1}
+						if(item.Drop !== undefined) {item.Drop.Level = 1}
+					}); 
+					l[1] = []; //Free level 2
 				}
-				else {i++}
 			}
-			if(inserted == false) {target.insertBefore(div, null)} //No insertion point left, append it at the end
-		}
-	}
-	updateSelectedData(entry, rows, I) { //Following selection by the user, update the array of items with the new selection
-		let l = rows.length;
-		for(let i=0; i<l; i++) { //For each selected item
-			let cat = rows[i].getAttribute("category");
-			let index = rows[i].getAttribute("originIndex");
-			let obj = this[cat][index];
-			if(I && I.Cancel) {obj.Available = true} //Unmark selected items on cancel
-			else {this.UI[entry].Array.push(this[cat][index])} //Add the resolved item to the corresponding array
-		}
-		this.UI[entry].update(); //Update the respTable, which will trigger the compute method
-	}
+		});
+		return I;
+	}	
 	resolveAllNames() { //Resolve the names for all the definitions available
 		let promises = [];
 		return new Promise(function(resolve) { //Return a promise that will resolve when the parsing is completed
@@ -187,14 +297,7 @@ class Report_Grouped extends Report {
 	}
 	resolveNames(d, defIndex) { //Resolve the names for the definition passed
 		let a = d.Area;
-		//
-		//
-		//
-		//let factor = Math.ceil(a.Tagged / a.Replicates);
 		let factor = a.MaxRange;
-		//
-		//
-		//
 		let args = {
 			Plate: this.UI["Definition_" + defIndex].Selected, //Name of the plate where to look the data
 			Factor: factor, //This factor is necessary to find the data in case no well/plate mapping are available
@@ -285,21 +388,69 @@ class Report_Grouped extends Report {
 		}, this);
 	}
 	compute() { //Do the job
-		let rows = this.UI.Rows.Array;
-		let cols = this.UI.Cols.Array;
-		if(rows.length == 0 || cols.length == 0 || this.Ready != true) {return this}
+		let rows = this.UI.Selected.Rows;
+		let cols = this.UI.Selected.Cols;
+		if(rows[0].length == 0 || cols[0].length == 0 || this.Ready != true) {Report_Grouped.welcome(); return this} //Missing rows or columns
 		let plate = this.UI.Plate.Selected;
-		let aggregation = this.UI.DataView.Selected;
 		this.getValues(plate).then(function(data) {
 			data.Params.forEach(function(p, i) {
 				let section = Report.getBloc(this, Report.blocName(p)).getSection("Values", {TableType: "Grouped"});
-				let table = this.valueTable(rows, cols, data, i, aggregation);
-				section.replaceContent("<p class=\"Title\">Data for plate: " + plate + "</p>" + table.HTML);
+				let json = Analyzer.encodeJSON(rows, cols, data.Values[i]); //Get a JSON object as data
+				section.Data = JSON.stringify(json); //Store it as a string
+				section.update(json); //Renew the content within the section
 			}, this);
-			this.updateNames();
 		}.bind(this));
 	}
-	valueTable(rows, cols, data, paramIndex, aggregation) { //The table that will hold the data
-		return Analyzer.groupedTable(rows, cols, data.Values[paramIndex], aggregation);
+	update() { //Update the sections without parsing all the data again
+		//let aggregation = this.UI.DataView.Selected;
+		this.Blocs.forEach(function(b) { //Update all blocs
+			let section = b.getSection("Values", {TableType: "Grouped"});
+			section.update();
+		});
 	}
+	/*valueTable(rows, cols, data, paramIndex, aggregation) { //The table that will hold the data
+		let header = this.header(rows, cols); //Make headers
+		return Analyzer.groupedTable(header, rows, cols, data.Values[paramIndex], aggregation);
+	}
+	header(rows, cols) { //Header for the table.
+		let html = ["", "", "", ""];
+		let LeftSpan = "<tr>" + Report_Grouped.ColSpan(rows);
+		let LevelTwo = Report_Grouped.header(cols[1]);
+		let LineFour = LevelTwo.TwoLine; //Whether line four should be used or not
+		let colSpan = "";
+		if(LevelTwo.Span > 1) {colSpan = " colspan=\"" + LevelTwo.Span + "\""}
+		let rowSpan = "";
+		let LineTwo = cols[0].some(function(c) {return c.Values.length > 1}); //This will be true if at least one of the column has two values and should fit on two lines
+		if(LineTwo) {rowSpan = " rowspan=\"2\""}
+		cols[0].forEach(function(c, i) { //Travel level one data
+			if(i == 0) { //Add the leftspan everywhere on first use
+				html = html.map(function(h) {return h += LeftSpan});
+			}
+			let l = c.Values.length;
+			if(l == 1) { //Only one value for this group
+				html[0] += "<th" + colSpan + rowSpan + ">" + Analyzer.header(c) + "</th>";
+				if(cols[1].length > 0) { //Add the corresponding level 2 data
+					html[2] += LevelTwo.Top;
+					html[3] += LevelTwo.Bottom;
+				}
+			} 
+			else { //Multiple values
+				html[0] += "<th colspan=\"" + Math.max(l, l * LevelTwo.Span) + "\">" + Analyzer.header(c) + "</th>"; //The header for the group
+				c.Values.forEach(function(v) { //Append all the values 
+					html[1] += Analyzer.valueHeader(v, LevelTwo.Span);
+					if(cols[1].length > 0) { //Add the corresponding level 2 data
+						html[2] += LevelTwo.Top;
+						html[3] += LevelTwo.Bottom;
+					}
+				});
+			}
+		});
+		let out = html[0] + "</tr>";
+		if(LineTwo) {out += html[1] + "</tr>"}
+		if(cols[1].length > 0) { //Level 2 data
+			out += html[2] + "</tr>";
+			if(LineFour) {out += html[3] + "</tr>"}
+		}
+		return out;
+	}*/
 }

@@ -507,24 +507,37 @@ class Layer {
 		let r = this.Rows;
 		let c = this.Cols;
 		let html = "<table class=\"PlateTable\"><tr><th></th>";
-		for(let j=0;j<c;j++) { //Headers, for each col
-			html += "<th>" + (j + 1) + "</th>";
+		for(let j=0;j<c;j++) {html += "<th>" + (j + 1) + "</th>"} //Headers, for each col
+		let logAvailable = true;
+		let min = this.Wells.reduce(function(a, b) {
+			if(b.Value !== undefined) {
+				if(b.Value <= 0) {logAvailable = false}
+				return Math.min(a, b.Value);
+			}
+			else {return a}
+		}, +Infinity); //Must provide an initial value to avoid NaN
+		let max = this.Wells.reduce(function(a, b) {
+			if(b.Value !== undefined) {
+				if(b.Value <= 0) {logAvailable = false}
+				return Math.max(a, b.Value);
+			}
+			else {return a}
+		}, -Infinity); //Must provide an initial value to avoid NaN
+		if(logAvailable) {
+			min = Math.log10(min);
+			max = Math.log10(max);
 		}
-		let min = Math.log10(this.Wells.reduce(function(a, b) {
-			if(b.Value) {return Math.min(a, b.Value)}
-			else {return a}
-		}, +Infinity)); //Must provide an initial value to avoid NaN
-		let max = Math.log10(this.Wells.reduce(function(a, b) {
-			if(b.Value) {return Math.max(a, b.Value)}
-			else {return a}
-		}, -Infinity)); //Must provide an initial value to avoid NaN
 		let colors = [[150,150,255], [255,255,255], [255,150,150]]; //Blue-White-Red (min-middle-max)
 		html += "</tr>";
 		for(let i=0;i<r;i++) { //For each row
 			html += "<tr><th>" + Well.alphabet(i) + "</th>";
 			for(let j=0;j<c;j++) { //For each col
 				let w = this.Wells[i * c + j];
-				html += "<td style=\"background-color:" + CSSCOLORS.heatmap(Math.log10(w.Value), min, max, colors) + "\">" + Well.dose(w) + "</td>";
+				//html += "<td style=\"background-color:" + CSSCOLORS.heatmap(Math.log10(w.Value), min, max, colors) + "\">" + Well.dose(w) + "</td>";
+				html += "<td style=\"background-color:";
+				if(logAvailable) {html += CSSCOLORS.heatmap(Math.log10(w.Value), min, max, colors)}
+				else {html += CSSCOLORS.heatmap(w.Value, min, max, colors)}
+				html += "\">" + Well.dose(w) + "</td>";
 			}
 			html += "</tr>";
 		}

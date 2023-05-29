@@ -727,10 +727,11 @@ class Plate {
 //EXPORT METHODS
 //*****************
 	getConc() { //This method returns an array of unique concentration values, flattened for all layers, organized per unit, with the well indices indicated
-		let conc = [];
+		let out = [];
 		this.Layers.forEach(function(l) { //For all layers
+			let conc = [];
 			l.Wells.forEach(function(w) { //For all wells
-				if(w.Value) { //If this well has a value registered
+				if(w.Value !== undefined) { //If this well has a value registered
 					let unit = conc.find(function(e) {return e.Unit == w.Unit});
 					if(unit) { //Update an existing unit group
 						let val = unit.Values.find(function(e) {return e.Value == w.Value});
@@ -745,9 +746,10 @@ class Plate {
 						conc.push({Unit: w.Unit, Name: w.Unit, Values: [{Value: w.Value, Type: "Conc", Name: w.Unit, Tags: [w.Index]}]}); //Name and Type fields are added for consistency between objects sent to the analyzer
 					}
 				}
-			})
+			});
+			out = out.concat(conc);
 		});
-		return conc;
+		return out;
 	}
 	getAsTxt() { //Return a string representing the tab-delimited version of the plate layout
 		
