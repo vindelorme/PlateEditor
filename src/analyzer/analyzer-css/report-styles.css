@@ -40,7 +40,11 @@ legend {
 	background-color: white;
 	text-align: center;
 }
-
+a {
+	font-style: italic;
+	color: blue;
+	cursor: pointer;
+}
 .Section {
 	max-width: 72vw;
 	overflow: auto;
@@ -54,10 +58,18 @@ legend {
 	padding: 5px;
 	border-radius: 5px;
 }
-a {
-	font-style: italic;
-	color: blue;
-	cursor: pointer;
+.DynTable_Container {
+	float: left;
+	border: 1px solid darkred;
+	border-radius: 5px;
+	margin: 5px;
+}
+.DynTable_Title {
+	font-size: 0.9em;
+	color: darkred;
+}
+.DynTable_Wrap {
+	float: left;
 }
 .HitStatus {
 	padding: 5px 0 0 5px;

@@ -265,7 +265,10 @@ class Mapper {
 //*********************************************************************************************
 	static scan(o, I) { //Scan the file and execute some actions as described in the options passed: Preview(limit), Log, Min/Max. Returns a promise
 		if(o === undefined) {return Promise.resolve({Error: "No file selected"})}
-		if(I === undefined) {console.warn("Mapper.scan is missing parameters to run"); return Promise.resolve({Error: "Internal error, check console for details"})}
+		if(I === undefined) {
+			console.warn("Mapper.scan is missing parameters to run");
+			return Promise.resolve({Error: "Internal error, check console for details"});
+		}
 		let output = { //Output object
 			Items: 0, //The number of valid items
 			PlatesID: [], //To log the plate names

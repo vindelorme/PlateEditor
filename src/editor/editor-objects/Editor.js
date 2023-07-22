@@ -170,7 +170,7 @@ class Editor {
 		]));
 		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
 			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.report("aggregate")}.bind(this)},
-			{Label: "Grouped Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as two-entry tables", Click: function() {this.report("grouped")}.bind(this)},
+			{Label: "Grouped Analysis", Title: "Compute statistics for combinations of areas, ranges and concentrations defined in the layout, organized as one or two-entry tables", Click: function() {this.report("grouped")}.bind(this)},
 		]));
 		return this;
 	}
@@ -591,7 +591,7 @@ class Editor {
 		if(results.length == 0) {this.Console.log({Message: "No result file available", Gravity: "Error"}); return this} //Check that results exist
 		switch(type) { //Open the desired report page
 			case "zFactor": return this.zFactor();
-			case "aggregate": return this.aggregate();
+			case "aggregate": return this.grouped({ColumnOnly: true});
 			case "grouped": return this.grouped();
 			case "hits": return this.hits();
 		}
@@ -602,17 +602,18 @@ class Editor {
 		Reporter.zFactor(controls);
 		return this;
 	}
-	static aggregate() { //Compute and report stats for aggregated areas (column analysis)
-		let areas = Area.getAreas(this.Tables.Areas.Array);
-		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
-		Reporter.aggregate(areas);
-		return this;
-	}
-	static grouped() { //Features for grouped analysis
+	/*static aggregate() { //Compute and report stats for aggregated areas (column analysis)
 		let areas = Area.getAreas(this.Tables.Areas.Array);
 		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
 		let conc = this.Plate.getConc(); //Loop the plate to get the conc categorized per unit
-		Reporter.grouped(areas, conc);
+		Reporter.aggregate(areas, conc);
+		return this;
+	}*/
+	static grouped(I) { //Features for grouped analysis
+		let areas = Area.getAreas(this.Tables.Areas.Array);
+		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
+		let conc = this.Plate.getConc(); //Loop the plate to get the conc categorized per unit
+		Reporter.grouped(areas, conc, I);
 		return this;
 	}
 	static hits() { //Compute and report hits above the threshold for all plates

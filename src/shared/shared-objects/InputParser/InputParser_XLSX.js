@@ -84,7 +84,23 @@ class InputParser_XLSX extends InputParser {
 								let valStart = cell.indexOf("<v>");
 								if(valStart > -1) { //This cell has a value
 									let v = cell.substring(valStart + 3, cell.indexOf("</v>")); //The value
-									let type = cell.substring(0, cell.indexOf('</c>')).match(/t="(.+?)"/); //Restrict the search to the current cell. Expecially useful for the last cell
+									let t = cell.indexOf(' t="'); //The position of the type property
+									if(t > -1) { //If a type property exist, extract it
+										let type = cell.substring(t + 4, t + 5); //The type has only one character length
+										switch(type) {
+											case "b": //Boolean value
+												if(v) {row.push("TRUE")}
+												else {row.push("FALSE")}
+												break;
+											case "s": //Shared string
+												row.push(shared[Number(v)]); //Convert the value using the shared dictionary and push it
+												break;
+											default: //This includes string and error values from formula
+												row.push(v); //Push the value
+												break;
+										}
+									}
+									/*let type = cell.substring(0, cell.indexOf('</c>')).match(/t="(.+?)"/); //Restrict the search to the current cell. Expecially useful for the last cell
 									if(type !== null) {
 										switch(type[1]) {
 											case "b": //Boolean value
@@ -98,7 +114,7 @@ class InputParser_XLSX extends InputParser {
 												row.push(v); //Push the value
 												break;
 										}
-									}
+									}*/
 									else {row.push(Number(v))} //Other cases should fall to the number type
 								}
 								else {row.push("")} //No value

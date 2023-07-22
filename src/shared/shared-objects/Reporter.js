@@ -123,24 +123,28 @@ class Reporter {
 		}
 		this.openReport("", {Title: "Control Report", Method: "zFactor"});
 	}
-	static aggregate(areas) { //Compute stats for the result file passed, using the areas provided
+	/*static aggregate(areas, conc) { //Compute stats for the result file passed, using the areas provided
 		areas.R.forEach(function(range) {
 			areas.A = areas.A.concat(range.Values); //Concat all individual rangeIndex to the areas
 		});
 		window.Aggregate = {
 			Combinations: this.combination({A: areas.A}, {Conc: true, Tags: true}),
-			Ranges: areas.R,
 		}
 		this.openReport("", {Title: "Column Report", Method: "Aggregate"});
-	}
-	static grouped(areas, conc) { //Compute stats for the result file passed, using the areas provided and organizing data as two-entry tables
+	}*/
+	static grouped(areas, conc, I) { //Compute stats for the result file passed, using the areas provided and organizing data as two-entry tables
 		window.Grouped = {
 			Areas: areas.A,
 			Conc: conc,
 			Ranges: areas.R,
-			Definitions: areas.D,
+			//Definitions: areas.D,
 		}
-		this.openReport("", {Title: "Grouped Report", Method: "Grouped"});
+		if(I && I.ColumnOnly) {
+			this.openReport("", {Title: "Column Report", Method: "Aggregate"});
+		}
+		else {
+			this.openReport("", {Title: "Grouped Report", Method: "Grouped"});
+		}
 	}
 	static hits(controls, areas, layout) { //Finds the hits above the given thresholds
 		window.Hits = {

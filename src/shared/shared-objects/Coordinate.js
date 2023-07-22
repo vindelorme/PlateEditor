@@ -32,15 +32,19 @@ class Coordinate {
 	static statValue(val) { //Compute the stats for a single value of the Values array
 		if(Array.isArray(val)) { //An array of values
 			let l = val.length; //Total number of values in the array
-			let v = val.filter(function(n) { //Get the array of numerical elements only
-				return Decimal.isNumeric(n);
+			let flat = val.map(function(x) { //Flatten objects inside the array
+				if(x.Value !== undefined) {return x.Value}
+				return x;
+			});
+			let v = flat.filter(function(x) { //Then get the array of numerical elements only
+				return Decimal.isNumeric(x);
 			});
 			let n = v.length; //Total number of numerical values
 			if(n == 0) {return {N: 0, Total: l} } //No values means no more work to do
 			if(n == 1) {return {N: 1, Average: v[0], Total: l}} //Only one value means nothing else to do
 			let total = v.reduce(function(acc, cur) {return acc + cur}, 0);
 			let avg = total / n; //Average value
-			let sumVariance = val.reduce(function(acc, cur) {
+			let sumVariance = v.reduce(function(acc, cur) {
 				return acc + Math.pow(cur - avg, 2);
 			}, 0);
 			let SD = Math.sqrt(sumVariance / n);
@@ -50,7 +54,7 @@ class Coordinate {
 			return {N: 1, Average: val, Total: 1}
 		}
 	}
-	static flatten(c) { //Flatten the Values array of the coordinate into a single, 1D array containing only numerical values
+	/*static flatten(c) { //Flatten the Values array of the coordinate into a single, 1D array containing only numerical values
 		let out = c.Values.reduce(function(acc, cur, i) { //Flatten the 2D array of values into a flat 1D array
 			if(c.Excluded[i] === false && c.Numeric[i] === true) {return acc.concat(cur)}
 			else {return acc}
@@ -61,9 +65,9 @@ class Coordinate {
 		return out;
 	}
 	static stats(c) { //Compute the stats for the coordinate object passed and return them as a structured object.
-		/*let val = c.Values.filter(function(v, i) { //Get the array of numerical elements only
-			return (c.Excluded[i] === false && c.Numeric[i] === true);
-		});*/
+		//let val = c.Values.filter(function(v, i) { //Get the array of numerical elements only
+		//	return (c.Excluded[i] === false && c.Numeric[i] === true);
+		//});
 		let val = Coordinate.flatten(c);
 		let n = val.length; //Number of numerical values
 		if(n == 0) {return {N: 0} } //No values means no more work to do
@@ -75,7 +79,39 @@ class Coordinate {
 		}, 0);
 		let SD = Math.sqrt(sumVariance / n);
 		return {N: n, Average: avg, SD: SD, CV: 100 * SD / avg}
+	}*/
+	static headerObject(way, CV) { //Return a structured object representing the header for statistics, either as row or column, including CV or nothing
+		let o = this.statObject(CV);
+		if(way == "Row") { //The output will be as an object including arrays of properties
+			return {
+				Names: o.map(function(s) {return s.Name}),
+				Types: o.map(function(s) {return s.Type}),
+				Titles: o.map(function(s) {return s.Title}),
+			}
+		}
+		else {return o} //The output will be an array of objects with a set of properties
 	}
+	static statObject(CV) { //Return an array of objects with a set of properties representing the statistics calculated. CV present or not, as a boolean
+		let out = [
+			{Name: "Average", Type: "#", Title: ["Average of the numerical values present in this column. Not available for texts"], Class: "TotalRows"},
+			{Name: "SD", Type: "#", Title: ["Standard Deviation for the numerical values present in this column. Available for 2 or more values"], Class: "TotalRows"},
+		];
+		if(CV) {out.push({Name: "CV", Type: "#", Title: ["Coefficient of Variation for the numerical values present in this column (expressed in %). Available for 2 or more values"], Class: "TotalRows"})}
+		out.push(
+			{Name: "N", Type: "Text", Title: ["Number of numerical and valid values used for the calculation of the statistics"], Class: "TotalRows"}, //Consider the N as text so that it bypasses the decimal formatting
+			{Name: "Total", Type: "Text", Title: ["Total number of values seen in this column"], Class: "TotalRows"} //Same here
+		);
+		return out;
+	}
+	static statToArray(s, CV) { //Return the values in the stat object s as an array, with or w/o the CV
+		let out = [s.Average, s.SD];
+		if(CV) {out.push(s.CV)}
+		out.push(s.N, s.Total);
+		return out;
+	}
+	//
+	//
+	//
 	//Getter and Setter
 	//***************************************************************************************
 	//MAYBE MORE EFFICIENT TO SIMPLY CALL THE STATIC METHOD STATS(), WHICH IS MORE EFFICIENT

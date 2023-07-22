@@ -50,12 +50,30 @@ class RespTable {
 		this.bindEvents(); //Attach the selection event
 		if(!this.NoControls) { //Show controls for the table
 			let bar = LinkCtrl.buttonBar([ //To manipulate the inputs
-				{Label: "", Title: "Remove all items", Icon: {Type: "Reset"}, Click: function() {this.confirmForm("RESET", this.empty.bind(this))}.bind(this)},
-				{Label: "", Title: "Remove selected item", Icon: {Type: "Delete"}, Click: function() {this.confirmForm("DELETE", this.removeRows.bind(this), this.SelectedIndices)}.bind(this)},
-				{Label: "", Title: "Move selected item up", Icon: {Type: "Up"}, Click: function() {this.up()}.bind(this)},
-				{Label: "", Title: "Move selected item down", Icon: {Type: "Down"}, Click: function() {this.down()}.bind(this)},
-				{Label: "", Title: "Move selected item to the top", Icon: {Type: "Top"}, Click: function() {this.top()}.bind(this)},
-				{Label: "", Title: "Move selected item to the bottom", Icon: {Type: "Bottom"}, Click: function() {this.bottom()}.bind(this)},
+				{Label: "", Title: "Remove all items", Icon: {Type: "Reset"}, Click: function() {
+					if(this.Locked) {return}
+					this.confirmForm("RESET", this.empty.bind(this));
+				}.bind(this)},
+				{Label: "", Title: "Remove selected item", Icon: {Type: "Delete"}, Click: function() {
+					if(this.Locked) {return}
+					this.confirmForm("DELETE", this.removeRows.bind(this), this.SelectedIndices);
+				}.bind(this)},
+				{Label: "", Title: "Move selected item up", Icon: {Type: "Up"}, Click: function() {
+					if(this.Locked) {return}
+					this.up();
+				}.bind(this)},
+				{Label: "", Title: "Move selected item down", Icon: {Type: "Down"}, Click: function() {
+					if(this.Locked) {return}
+					this.down();
+				}.bind(this)},
+				{Label: "", Title: "Move selected item to the top", Icon: {Type: "Top"}, Click: function() {
+					if(this.Locked) {return}
+					this.top();
+				}.bind(this)},
+				{Label: "", Title: "Move selected item to the bottom", Icon: {Type: "Bottom"}, Click: function() {
+					if(this.Locked) {return}
+					this.bottom();
+				}.bind(this)},
 			]);
 			container.prepend(bar); //Buttons to control the input table
 		}
@@ -63,6 +81,7 @@ class RespTable {
 	}
 	bindEvents() { //Attach events to the table
 		GetId(this.Me).addEventListener("click", function(e) {
+			if(this.Locked) {return}
 			let OldSelection = this.Selected; //Selected elements at the moment of the click
 			let OldIndices = this.SelectedIndices;
 			let target = e.target;
@@ -272,5 +291,11 @@ class RespTable {
 			],
 		});
 		return this;
+	}
+	lock() { //Prevent further interactions for this table
+		this.Locked = true;
+	}
+	unlock() { //Restore interactions for this table
+		this.Locked = false;
 	}
 }

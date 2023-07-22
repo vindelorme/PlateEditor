@@ -49,8 +49,8 @@ class Report {
 					"<fieldset id=\"" + this.Anchors.PlateSelect + "\">" +
 						"<legend>Result</legend>" +
 						"<div id=\"" + this.Anchors.ResultPlate + "\"></div>" +
-						"<div style=\"text-align: center; margin-bottom: 10px\" id=\"" + this.Anchors.PairingTarget + "\"></div>" +
-						"<div id=\"" + this.Anchors.PlateDoAll + "\"></div>" +
+						"<div style=\"text-align: center; margin-bottom: 5px;\" id=\"" + this.Anchors.PairingTarget + "\"></div>" +
+						"<div id=\"" + this.Anchors.PlateDoAll + "\" style=\"text-align: center;\"></div>" +
 					"</fieldset>"}
 				},
 			],
@@ -73,15 +73,14 @@ class Report {
 			}.bind(this), Title: "Tick to show the coefficient of varation (CV, %) for the data"}),
 			ExportFormat: LinkCtrl.new("Radio", {ID: this.Anchors.Export, Default: 0, Label: "Export values", List: ["Raw", "Displayed"], Title: "Controls whether the exported data should be as they appear in the file or after calculation (Raw), or as they appear in the table with the decimal formatting applied (Displayed)"}),
 		}
-		//console.log(I);
-		if(I && I.Options == "full") {
+		//if(I && I.Options == "full") {
 			this.Options.LogScale = LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Label: "Log Scale", Default: false, Chain: {Index: 4, NewLine: true}, Change: function(v) {
 				this.refresh("Log");
 			}.bind(this), Title: "Tick to show the concentration data in log scale"});
 			this.Options.Shift = LinkCtrl.new("Checkbox", {ID: this.Anchors.Options, Label: "Shift unit", Default: false, Chain: {Index: 5, Last: true}, Change: function(v) {
 				this.refresh("Log");
 			}.bind(this), Title: "Tick to shift the concentration data to their closest parent value (i.e. M or g/mL) when using the log scale"});
-		}
+		//}
 		this.UI = { //Container for specific LinkCtrl elements
 			Plate: LinkCtrl.new("Select", {ID: this.Anchors.ResultPlate, Default: 0, List: [], Label: "Plate", Change: function(index) {
 				this.Result.LoggedPlate = index; //Log the selected plate for this result file
@@ -102,7 +101,8 @@ class Report {
 	static new(o) {
 		switch(o.Method) {
 			case "zFactor": return new Report_Controls(o);
-			case "Aggregate": return new Report_Aggregate(o);
+			//case "Aggregate": return new Report_Aggregate(o);
+			case "Aggregate": return new Report_Grouped(o, {Options: "full", ColumnOnly: true}); //A blunted version of the more general Grouped report
 			case "Grouped": return new Report_Grouped(o, {Options: "full"});
 			case "Hits": return new Report_Hits(o, {Options: "minimum"});
 			default: return new Report(o);
@@ -174,6 +174,20 @@ class Report {
 	static blocName(param) { //Build a unique bloc name using the properties of the parameter object provided
 		return param.ResultIndex + ". " + param.Name;
 	}
+	static hasData(report, currentPlate) { //Check if the data for the plate are already available for this report
+		let n = report.FirstBlocIndex;
+		if(n === undefined) {return false} //No blocs available for this Report
+		let section = report.Blocs[n].getSection("Plate Summary");
+		switch(section.Type) {
+			case "Multiple": //Control report
+				let array = section.Tables[0].Data.Data[0].Groups[0].DataPoints[0]; //All tables share the same contents in th plate column
+				return array.includes(currentPlate);
+			case "StatsTable":
+				let source = section.Tables[0].DataArray[0].Groups[0].DataPoints[0]; //The structure is a bit different
+				return source.includes(currentPlate);
+			default: return false;
+		}
+	}
 	//Getter and setter
 	get Result() { //Get the result file currently selected
 		let r = this.Results.Selected[0];
@@ -182,6 +196,9 @@ class Report {
 			return this.Results.Selected[0];
 		}
 		else {return r}
+	}
+	get SelectedPlate() { //Return the currently selected result plate
+		return this.UI.Plate.Selected.toString(); //Force string output in case of generic index
 	}
 	get FirstBlocIndex() { //For the result file selected, get the index of the first bloc containing its data
 		let start = (this.Results.SelectedIndices[0] + 1) + ". "; //The start of the name for all the parameters of the selected result file
@@ -206,9 +223,11 @@ class Report {
 		this.do(); //Do the job
 		return this;
 	}
-	do() {} //Do the job. Each child report has its own implementation of what to do
+	do() { //Do the job. Each child report has its own implementation of what to do
+		
+	}
 	prepareDefinition() { //Prepare the controls needed to change the definition plates out of the ranges available
-		GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>"); //Append the html to host the definitions
+		GetId(this.Anchors.PlateSelect).insertAdjacentHTML("afterend", "<fieldset style=\"margin-top: 5px;\"><legend>Definitions</legend><div id=\"Definitions_Select\"><i>None available</i></div></fieldset>"); //Append the html to host the definitions
 		this.Ranges.forEach(function(r, i) { //For each definition input, prepare a select to change the plate used for resolution of the range item
 			let d = r.Definition;
 			if(d !== undefined) {
@@ -295,7 +314,79 @@ class Report {
 					s.update();
 				});
 			});
+			this.updateNames();
 		}
+	}
+	update() { //Update the sections without parsing all the data again
+		this.Blocs.forEach(function(b) { //Update all blocs
+			b.Sections.forEach(function(s) { //Update all sections
+				s.update();
+			});
+		});
+		return this;
+	}
+	updateNames(range, index) { //Update the names for the rangeIndex provided, or all the ranges if nothing is passed
+		let source = this.Ranges; //Fallback that will be used if range is undefined
+		if(range !== undefined) { //A specific range is provided
+			source = Array(this.Ranges.length);
+			source[index] = range; //This is to ensure we can use the position in the array to find the correct definitions
+		}
+		let collection = GetId("Output").getElementsByClassName("Value_PlaceHolder Header_Range");
+		let l = collection.length;
+		for(let i=0; i<l; i++) { //Travel the collection and search for matching names
+			let th = collection[i];
+			let string = th.innerHTML;
+			if(th.hasAttribute("RootName")) {string = th.getAttribute("RootName")} //In this case, recover the saved generic name
+			else {th.setAttribute("RootName", string)} //Save the generic name before making modifications
+			source.forEach(function(r, j) { //For each range
+				if(r !== undefined && this.ResolvedNames[j] !== undefined) { //When a single range is provided, only one element of the array is defined. And when the range has no definitions, the resolved names are absent
+					let name = r.Name + " #";
+					let n = name.length;
+					let pos = string.indexOf(name);
+					if(pos > -1) { //The title includes this name
+						pos += n; //Update position to start at the #
+						let end = string.indexOf(" ", pos); //Find the position of the next space
+						let RangeIndex = Number(string.substring(pos, end)); //Extract the range index value
+						if(end == -1) {RangeIndex = Number(string.substring(pos))} //In cases where the name is not succeded by a unit or another area, the rangeIndex is up to the end of the string
+						th.innerHTML = string.replace(name + RangeIndex, this.ResolvedNames[j][RangeIndex - 1]); //Replace the generic name with the definition
+					}
+				}
+			}, this);
+		}
+	}
+	getValues(selectedPlate) { //Retrieve all the parameter values for the selected plate, as a 2D array the size of the plate
+		let o = {Items: 0, Values: [], Params: []} //Output object containing the data for one plate
+		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
+		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
+			if(p.Selected) { //This parameter is selected and numeric type, continue
+				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex, Numeric: p.Numeric});
+				o.Values.push([]); //Create empty arrays to receive the values for each parameter
+			}
+		}, this);
+		this.waitMessage(o.Params); //This displays waiting message
+		let custom = function(well, plate, row, output, parser) { //The function to run on each line
+			if(plate == selectedPlate) { //We are on the right plate
+				let wellIndex = well.Index;
+				output.Params.forEach(function(param, i) { //Log the values for all parameters
+					if(param.Numeric) {output.Values[i][wellIndex] = Number(row[param.Index])}
+					else {output.Values[i][wellIndex] = row[param.Index]}
+				});
+			}
+		}
+		return new Promise(function(resolve) {
+			this.Result.Mapper.scan(this.Result, {Custom: custom}, o).then(function(data) {
+				resolve(data);
+			});
+		}.bind(this));
+	}
+	waitMessage(params) { //Display a waiting message
+		let msg = "<br><span class=\"Warning\">Parsing values, please wait...</span>";
+		params.forEach(function(param, i) { //Process all parameters
+			let bloc = Report.getBloc(this, Report.blocName(param));
+			bloc.Sections.forEach(function(s) {
+				if(s.Summary === undefined) {s.replaceContent(msg)}
+			});
+		}, this);
 	}
 	/*
 	refresh(what, I) { //Refresh the report

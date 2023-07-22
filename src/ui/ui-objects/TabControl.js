@@ -67,11 +67,11 @@ class TabControl {
 	}
 	init() { //Initialize the html for the tabs in the ID container
 		if(this.Tabs.length == 0) {return this} //Nothing there, end of the story...
-		var container = GetId(this.ID);
+		let container = GetId(this.ID);
 		if(container === null || container === undefined) {return this} //Do nothing if the container does not exist
 		if(!container.classList.contains("LinkCtrl_Tab")) {container.classList.add("LinkCtrl_Tab")}; //Add classes for the tab
 		if(!container.classList.contains("LinkCtrl_Round")) {container.classList.add("LinkCtrl_Round")};
-		var html = "";
+		let html = "";
 		switch(this.Layout) {
 			case "Horizontal": //In this case, the headers are prepared first horizontally, followed by the contents
 				html += "<div class=\"LinkCtrl_TabHeaders\">"; //Wrapper div for the headers

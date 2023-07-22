@@ -5,21 +5,20 @@ class GroupTable {
 	constructor() {return}
 	//Static Methods
 	static flattenSeries(a, array) { //Flatten the incoming area into a new object that will be pushed into the provided array. Returns the header information for this area, if any
-		if(a.Category == "Areas") { //In this case there is nothing to do, only push a copy with the necessary properties
-			array.push(new Group(a)); //Push in the array
-			return; //Returns nothing as there are no headers required
-		}
-		if(a.Category == "Concentrations") { //In this case, flatten the values
-			a.Values.forEach(function(v) {
-				array.push(Group.newTyped(v, "Conc", {SetNameAsValue: true})); //Keep the value field to calculate the log when needed
-			});
-			return {Type: "Conc", Name: a.Name, Span: a.Values.length, Unit: a.Unit} //Output the corresponding header
-		}
-		if(a.Category == "Ranges") {
-			a.Values.forEach(function(v) {
-				array.push(Group.newTyped(v, "Range", {OriginIndex: a.OriginIndex})); //Keep the Range metadata to access its definition
-			});
-			return {Type: "Range", Name: a.Name, Span: a.Values.length, OriginIndex: a.OriginIndex} //Output the corresponding header
+		switch(a.Category) {
+			case "Concentrations": //In this case, flatten the values
+				a.Values.forEach(function(v) {
+					array.push(Group.newTyped(v, "Conc", {SetNameAsValue: true})); //Keep the value field to calculate the log when needed
+				});
+				return {Type: "Conc", Name: a.Name, Span: a.Values.length, Unit: a.Unit} //Output the corresponding header
+			case "Ranges":
+				a.Values.forEach(function(v) {
+					array.push(Group.newTyped(v, "Range", {OriginIndex: a.OriginIndex})); //Keep the Range metadata to access its definition
+				});
+				return {Type: "Range", Name: a.Name, Span: a.Values.length, OriginIndex: a.OriginIndex} //Output the corresponding header
+			default:
+				array.push(new Group(a)); //Push in the array
+				return; //Returns nothing as there are no headers required
 		}
 	}
 	static flattenLevel(level, array) { //Flatten an array containing areas to be flattened within the provided array, and return the corresponding header array
@@ -108,52 +107,71 @@ class GroupTable {
 	static populateData(object, data) { //Populate data within the array of objects
 		object.forEach(function(o) { //For each object
 			o.Groups.forEach(function(g) { //For each column
-				let t = g.Tags
-				o.SubGroups.forEach(function(s) { //For each row
-					let inter = this.intersect(s.Tags, t); //Compute the intersection
-					let values = inter.map(function(v) {return data[v]});//Tag arrays contains well indices that can be used to retrieve the values in the data array
-					g.DataPoints.push(values); //Push the constructed data array
-				}, this);
+				let t = g.Tags;
+				if(o.SubGroups.length > 0) {
+					o.SubGroups.forEach(function(s) { //For each row
+						let inter = this.intersect(s.Tags, t); //Compute the intersection
+						let values = inter.map(function(v) {return data[v]});//Tag arrays contains well indices that can be used to retrieve the values in the data array
+						g.DataPoints.push(values); //Push the constructed data array
+					}, this);
+				}
+				else { //Case of a table with only column representation
+					g.DataPoints.push(t.map(function(v) {return data[v]})); //No intersection required, the tag indicates which values to aggregate
+				}
 			}, this);
 		}, this);
 	}
 //*************************************************
 //Methods for the export of the json to HTML OR TXT
 //*************************************************
-	static export(json, F, headers) { //Output the passed json as a html/txt string. Headers can  optionally be switched off
+	static export(json, F, headers) { //Output the passed json as a html/txt string. Headers can optionally be switched off
 		let out = "";
-		F.ColumnsLength = json.Groups.map(function(g) { //Compute the array that tells the max number of subcolumns for each columns
+		let f = F.Format;
+		let data = json.Data[0]; //Without wrapping, all data are contained in a single data array
+		F.ColumnsLength = data.Groups.map(function(g) { //Compute the array that tells the max number of subcolumns for each columns
 			return g.DataPoints.reduce(function(acc, val) {return Math.max(acc, val.length)}, 0);
 		});
-		out += Analyzer.tableStart(F.Format);
-		out += this.export_ColHeaders(json, F, headers); //Column headers
+		out += Analyzer.tableStart(f);
+		out += this.export_ColHeaders(data, F, headers); //Column headers
 		let track = {Index: 0, HeaderIndex: 0}; //Keeps track of the header indices during the loop
-		json.SubGroups.forEach(function(r, i) { //Loop the rows
-			out += Analyzer.rowStart(F.Format);
-			out += this.export_RowHeader(r, i, track, F, headers) //Header for this row
-			out += this.export_RowData(i, json, F, headers); //Formatted innerTable data for the row
-			out += Analyzer.rowEnd(F.Format);
-		}, this);
-		out += Analyzer.tableEnd(F.Format);
+		if(data.SubGroups.length > 0) {
+			data.SubGroups.forEach(function(r, i) { //Loop the rows
+				out += Analyzer.rowStart(f);
+				out += this.export_RowHeader(r, i, track, F, headers) //Header for this row
+				out += this.export_RowData(i, data, F, headers); //Formatted innerTable data for the row
+				out += Analyzer.rowEnd(f);
+			}, this);
+		}
+		else { //Case of a table with only column representation
+			out += Analyzer.rowStart(f);
+			out += Analyzer.blankCell(f); //Empty cells for the row headers that are absent
+			out += this.export_RowData(0, data, F, headers); //Formatted innerTable data for the row
+			out += Analyzer.rowEnd(f);
+			if(json.StatRows) { //Last series of rows with statistics, when needed
+				out += WrapTable.export_StatRows(json, F); //Important to use the full json here, as this method is generic
+			}
+		}
+		out += Analyzer.tableEnd(f);
 		return out;
 	}
 	static export_ColHeaders(o, F, headers, gaps) { //Prepare the output for the column headers of the GrouTable passed as an object
 		let out = "";
 		let gap = "";
-		if(gaps) {gap = Analyzer.blankCell(F.Format).repeat(gaps)} //Additional gaps to be added when needed. Cases undefined and 0 are both excluded
+		let f = F.Format;
+		if(gaps) {gap = Analyzer.blankCell(f).repeat(gaps)} //Additional gaps to be added when needed. Cases undefined and 0 are both excluded
 		if(headers !== undefined) { //Create the headers
-			if(headers.Rows !== undefined) {gap += Analyzer.blankCell(F.Format)} //A blank will be needed to accomodate the row headers
+			if(headers.Rows !== undefined) {gap += Analyzer.blankCell(f)} //A blank will be needed to accomodate the row headers
 			if(headers.Cols !== undefined) {
-				out += Analyzer.rowStart(F.Format);
-				out += gap + Analyzer.blankCell(F.Format); //Leave another blank for the row header
+				out += Analyzer.rowStart(f);
+				out += gap + Analyzer.blankCell(f); //Leave another blank for the row header
 				out += Group.colHeaders(headers.Cols, F);
-				out += Analyzer.rowEnd(F.Format);
+				out += Analyzer.rowEnd(f);
 			}
 		}
-		out += Analyzer.rowStart(F.Format);
-		out += gap + Analyzer.blankCell(F.Format); //Blank(s) to accomodate row headers
+		out += Analyzer.rowStart(f);
+		out += gap + Analyzer.blankCell(f); //Blank(s) to accomodate row headers
 		out += Group.colValueHeaders(o, F);
-		out += Analyzer.rowEnd(F.Format);
+		out += Analyzer.rowEnd(f);
 		return out;
 	}
 	static export_RowHeader(row, i, T, F, headers) { //Prepare the html header of row, index i
@@ -197,35 +215,10 @@ class GroupTable {
 					out += Analyzer.cellForValue(S.Average, F, {Class: "BorderSpaced", Type: "#"});
 					break;
 				case "Avg, SD, N": //Avg, SD, N; Similar to row but with fixed column lengths of 3
-					out += Analyzer.arrayToRow([S.Average, S.SD, S.N], F, {Types: ["#", "#", "Text"], Titles: ["Average", "SD", "N"]});
+					out += Analyzer.arrayToRow([S.Average, S.SD, S.N], F, Coordinate.headerObject("Row"));
 					break;
 			}
 		});
 		return out;
-		/*switch(F.Aggregation) {
-			case "Row": //Display values as a horizontal table
-				json.Groups.forEach(function(c, j) { //Loop the cols
-					if(j > 0 && F.Format == "txt") {out += "\t"}
-					out += Analyzer.arrayToRow(c.DataPoints[i], F, {Types: Array(c.DataPoints[i].length).fill("#"), ColumnLength: F.ColumnsLength[j]});
-				});
-				break;
-			case "Average": //Only the average is shown	
-				json.Groups.forEach(function(c, j) { //Loop the cols
-					let S = Coordinate.statValue(c.DataPoints[i]); //Get the stats for this array
-					if(j > 0 && F.Format == "txt") {out += "\t"}
-					out += Analyzer.cellForValue(S.Average, F, {Class: "BorderSpaced", Type: "#"});
-				});
-				break;
-			case "Avg, SD, N":
-				json.Groups.forEach(function(c, j) { //Loop the cols
-					let S = Coordinate.statValue(c.DataPoints[i]); //Get the stats for this array
-					if(j > 0 && F.Format == "txt") {out += "\t"}
-					out += Analyzer.arrayToRow([S.Average, S.SD, S.N], F, {Types: ["#", "#", "Text"], Titles: ["Average", "SD", "N"]});
-				});
-				break;
-			case "Column": //This is the Col aggregation, which needs to be treated row-per-row
-				out += Analyzer.arrayToColumn(i, json, F, headers);
-				break;
-		}*/
 	}
 }

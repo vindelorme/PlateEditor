@@ -8,24 +8,54 @@ class WrapTable {
 		return this;
 	}
 	//Static Methods
-	
+	static export_StatRows(json, F) { //Compute and return the Avg, SD, N, CV for each columns of the json. Must be a single Row object!
+		let out = "";
+		let f = F.Format;
+		let stats = []; //Array to store the computed stats for each column
+		if(json.Stats !== undefined) {stats = json.Stats}
+		else {
+			json.Data.forEach(function(d) {
+				d.Groups.forEach(function(c, j) { //Loop the cols
+					let S = Coordinate.statValue(c.DataPoints[0]); //Get the stats for this array. Only Row 0 is used because there should not be others
+					stats.push(S);
+				});
+			});
+		}
+		let array = Coordinate.headerObject("Col", F.CV);
+		array.forEach(function(s, i) { //Loop the array to make the output, row by row
+			out += Analyzer.rowStart(f);
+			if(f == "txt") {out += s.Name + "\t"}
+			else {out += "<th Class=\"TotalRows\">" + s.Name + "</th>"}
+			stats.forEach(function(stat, j) { //Loop the cols
+				out += Analyzer.cellForValue(stat[s.Name], F, s); //Values of the stat for each column
+				if(f == "txt") {out += "\t"} //For txt output, add a tab
+			});
+			out += Analyzer.rowEnd(f);
+		});
+		return out;
+	}
 	//Methods
 	export(json, F) { //Output the html for the table
 		let out = Analyzer.tableStart(F.Format);
+		let cycle = this.Data.SubGroups.length; //How many times the level 1 values should be repeated (in rows)
+		let values = json.Data[0].SubGroups.length; //Number of level 1 values. All objects in Data share the same SubGroups arrays
 		out += this.colHeaders(json, F); //Prepare the column headers
 		let constant = {
-			RowCycle: (this.Data.SubGroups.length || 1), //How many times the level 1 values should be repeated (in rows)
-			RowValues: json.Data[0].SubGroups.length, //Number of level 1 values
+			RowCycle: (cycle || 1), //Ensure at least one col
+			RowValues: (values || 1), //Ensure at least one row 
 			HeadTrack: {Index: 0, HeaderIndex: 0}, //Keeps track of the header indices during the loop
 			WrapTrack: {Index: 0, HeaderIndex: 0},
 		}
-		let totalRow = constant.RowCycle * constant.RowValues;
+		let totalRow = constant.RowCycle * constant.RowValues; //At least one per construction
 		F.Gap = this.rowTxtGaps(json); //Number of gaps needed to accomodate the data, for column + txt export
 		for(let i=0; i<totalRow; i++) { //Go through all the rows
 			out += Analyzer.rowStart(F.Format);
 			out += this.rowHeaders(json, i, constant, F); //Append the headers for this row
 			out += this.rowData(json, i, constant, F); //Loop the cols to add the cell values
 			out += Analyzer.rowEnd(F.Format);
+		}
+		if(cycle == 0 && values == 0 && json.StatRows) { //There are no rows, pure column table
+			out += WrapTable.export_StatRows(json, F) //Export the statistics when needed
 		}
 		out += Analyzer.tableEnd(F.Format);
 		return out;
@@ -102,28 +132,31 @@ class WrapTable {
 	}
 	rowHeaders(json, i, constant, F) {
 		let out = "";
+		let f = F.Format;
+		if(this.Data.SubGroups.length == 0 && json.Data[0].SubGroups.length == 0) { //There are no rows, pure column table
+			return Analyzer.blankCell(f); //Nothing to output
+		}
 		let n = constant.RowValues;
-		let cycle = constant.RowCycle;
 		let lvl2Index = Math.floor(i / n);
 		let lvl1Index = i % n;
 		if(this.Headers !== undefined && this.Headers.Rows !== undefined) { //LEVEL 2 HEADER
 			if(lvl2Index == constant.WrapTrack.Index) { //This is the right position
 				let h = this.Headers.Rows[constant.WrapTrack.HeaderIndex];
 				if(h !== undefined && h !== null) { //JSON parsing yields empty array elements as null
-					switch(F.Format) {
+					switch(f) {
 						case "html": out += "<th rowspan=\"" + (h.Span * n) + "\">" + Analyzer.header(h, F) + "</th>"; break;
 						case "txt": out += Analyzer.header(h, F) + "\t"; break;
 					}
 					constant.WrapTrack.Index += h.Span;
 				}
 				else { //An empty slot is required to keep the alignment
-					out += Analyzer.blankHeader(F.Format, {Span: n, Dir: "Row"});
+					out += Analyzer.blankHeader(f, {Span: n, Dir: "Row"});
 					constant.WrapTrack.Index += 1;
 				}
 				constant.WrapTrack.HeaderIndex++;
 			}
 			else { //For txt, need to add a blank for alignement because there is no rowspan as in html
-				if(F.Format == "txt") {out += Analyzer.blankCell("txt")}
+				if(f == "txt") {out += Analyzer.blankCell("txt")}
 			}
 		}
 		if(i % n == 0) { //This marks the start of a new level 1 cycle and the next level 2 value
@@ -131,7 +164,7 @@ class WrapTable {
 			if(i > 0) {constant.HeadTrack = {Index: 0, HeaderIndex: 0}} //Reset the level 1 tracker for a new cycle
 		}
 		else { //For txt, need to add a blank for alignement because there is no rowspan as in html
-			if(F.Format == "txt") {out += Analyzer.blankCell("txt")}
+			if(f == "txt") {out += Analyzer.blankCell("txt")}
 		}
 		let row = json.Data[lvl2Index].SubGroups[lvl1Index]; //Current lvl 1 value
 		out += GroupTable.export_RowHeader(row, lvl1Index, constant.HeadTrack, F, json.Headers); //LEVEL 1 HEADER / VALUE
@@ -185,14 +218,6 @@ class WrapTable {
 	export_RowData(json, collected, lvl1Index, F) { //Export data for this row in columns, by constructing the column arrays row-by-row
 		let out = "";
 		let MaxRow = 0;
-		/*let gap = 1;
-		if(json.Headers !== undefined && json.Headers !== null) {
-			if(json.Headers.Rows !== undefined) {gap++}
-		}
-		if(this.Headers !== undefined && this.Headers.Rows !== undefined) {gap++}
-		if(this.Data.SubGroups.length > 0) {gap++}
-		gap = Analyzer.blankCell("txt").repeat(gap); //Gaps to leave at each row start
-		*/
 		let gap = Analyzer.blankCell("txt").repeat(F.Gap);
 		collected.forEach(function(v) { //Loop the columns to find the max nb of rows
 			let max = json.Data[v].Groups.reduce(function(acc, val) {return Math.max(acc, val.DataPoints[lvl1Index].length)}, 0);
@@ -206,9 +231,7 @@ class WrapTable {
 				o.Groups.forEach(function(g) { //Loop the columns in this group
 					let val = g.DataPoints[lvl1Index][j]; //Value at this location
 					if(val !== undefined) {out += Analyzer.cellForValue(val, F)} //Add it if defined
-					else { //No value defined here
-						if(j == 0) {out += Analyzer.noData("txt")} //If this was the first row, it means this column is empty
-					}
+					else {out += Analyzer.noData("txt")} //No value defined here
 					out += "\t"; //In all cases, insert a gap to keep the alignment
 				});
 			});

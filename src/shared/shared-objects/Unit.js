@@ -41,4 +41,12 @@ class Unit {
 		let here = l.find(function(u) {return u.Name == unit});
 		return (here.Root || unit);
 	}
+	static string(unit, value) { //Return the string for the unit and value given
+		switch(unit) {
+			case "MOI": return unit + " " + value; //Unit goes first, need a space
+			case "%": //FALL-THROUGH
+			case "×": return unit + value; //No space
+			default: return value + " " + unit;
+		}
+	}
 }

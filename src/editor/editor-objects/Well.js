@@ -28,9 +28,7 @@ class Well {
 	}
 	static dose(w) { //Return a string for the dose in this well
 		if(w === undefined || w.Conc === undefined) {return ""}
-		if(w.Unit == "MOI") {return "MOI " + w.Conc} //Unit goes first
-		if(w.Unit == "%" || w.Unit == "×") {return w.Conc + w.Unit} //No space
-		return w.Conc + " " + w.Unit; //Normal case
+		return Unit.string(w.Unit, w.Conc);
 	}
 	static parseIndex(w, plate) { //Parse the index corresponding to the well name provided as a string, in the current plate dimensions
 		if(w === undefined || plate === undefined || w.search === undefined) {return}

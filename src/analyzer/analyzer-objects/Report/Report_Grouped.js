@@ -8,6 +8,7 @@ class Report_Grouped extends Report {
 		this.RootID = "Form_AddData";
 		this.AvailableID = this.RootID + "_Available";
 		this.SelectedID = this.RootID + "_Selected";
+		this.ColumnOnly = I.ColumnOnly;
 		this.Areas = source.Areas.map(function(a, i) { //Slightly update the incoming objects with additional properties
 			a.Available = true; //Mark all items as available
 			a.Category = "Areas"; //Add some properties to facilitate interaction during the drag-and-drop operations
@@ -31,11 +32,12 @@ class Report_Grouped extends Report {
 			return c;
 		}, this);
 		this.Menu.addTabs([ //Prepare the menu
-			{Label: "Data selected", SetActive: true,
+			{Label: "Data", SetActive: true,
 				Content: {
 					Type: "HTML",
 					Value: "<div id=\"Report_Ready\"><span class=\"Warning\">Resolving definitions, please wait...</span></div>" +
-					"<fieldset id=\"AddRowCol\"><div id=\"Data_Options\"></div></fieldset>",
+						"<div id=\"Report_Alert\" class=\"Warning\"></div>" +
+						"<fieldset id=\"AddRowCol\"><div id=\"Data_Options\"></div></fieldset>",
 				}
 			},
 		]);
@@ -44,23 +46,41 @@ class Report_Grouped extends Report {
 			Rows: [[], []],
 			Cols: [[], []],
 		};
-		this.UI.DataView = LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Avg, SD, N", "Average", "Column", "Row"], Preserve: true, Change: this.update.bind(this),
-			Title: "Indicates how multiple values are displayed in the grouped table: arrayed in a single column or in consecutive rows; show only the average; show the average, standard deviation and number of samples"
-		});
+		if(this.ColumnOnly) { //Column Mode: use only the column aggregation
+			this.UI.DataView = LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Column"], Preserve: true,
+				Title: "Multiple values will be displayed arrayed in a single column"
+			});
+			let b = LinkCtrl.button({Label: "Compute all Plates", Title: "Click here to compute the statistical summaries for all plates", Click: function() {this.statsAllPlates()}.bind(this)});
+			GetId(this.Anchors.PlateDoAll).append(b);
+		}
+		else { //Grouped cases, more flexible
+			this.UI.DataView = LinkCtrl.new("Select", {ID: "Data_Options", Default: 0, Label: "Aggregation", List: ["Avg, SD, N", "Average", "Column", "Row"], Preserve: true, Change: this.update.bind(this),
+				Title: "Indicates how multiple values are displayed in the grouped table: arrayed in a single column or in consecutive rows; show only the average; show the average, standard deviation and number of samples"
+			});
+		}
 		let buttons = LinkCtrl.buttonBar([
 			{Label: "Select Data", Title: "Click here to add rows and columns of data to the summary table", Click: function() {this.addData()}.bind(this)},
 		]);
-		//IMPLEMENT THE DISABLE METHOD??
-		//this.Options.CV.Disabled = true;
-		//this.Options.CV.remove().init();
 		GetId("AddRowCol").prepend(buttons);
 		this.prepareDefinition();
-		Report_Grouped.welcome(); //Welcome message
+		Report_Grouped.msg_welcome(); //Welcome message
 		return this;
 	}
 	//Static Methods
-	static welcome() { //Display the welcome message in the output
-		GetId("Output").innerHTML = "<p class=\"Note\">Click on the 'Select Data' button located under the 'Data Selected' panel of the left menu to add rows and columns of data</p>";
+	static info() {
+		return "<p class=\"Note\">Click on the 'Select Data' button located in the 'Data' panel (left menu) to add rows and columns of data</p>";
+	}
+	static msg_welcome() { //Display the welcome message in the output
+		GetId("Output").innerHTML = this.info();
+	}
+	static msg_pleaseWait() {
+		GetId("Report_Alert").innerHTML = "<p class=\"Error\">Please Wait until the Range data are fully resolved!<p>";
+	}
+	static msg_noCol() {
+		GetId("Report_Alert").innerHTML = "<p class=\"Error\">Please Select at least one column of data!<p>";
+	}
+	static msg_clear() {
+		GetId("Report_Alert").innerHTML = "";
 	}
 	static dragStart(e, I) { //Start dragging the data
 		e.dataTransfer.setData("text/plain", e.target.id);
@@ -109,6 +129,14 @@ class Report_Grouped extends Report {
 		this.Moving = undefined; //Release the log
 		Analyzer.Report.updateSelectedData({Action: "Drop"}); //This will redraw the drop table based on the action performed
 	}
+	//Getter, Setter
+	get HasChanged() { //This getter check whether the data selected have changed compared to last time it was logged
+		let change = true;
+		let string = JSON.stringify(this.UI.Selected, ["Rows", "Cols", "Name"]); //Compare the object equality as a string. Keep only essential properties to make it easier
+		if(this.Selection == string) {change = false} //Has not changed
+		this.Selection = string;
+		return change;
+	}
 	//Methods
 	do() {
 		if(this.Ready) { //Names were already resolved, proceed
@@ -118,7 +146,6 @@ class Report_Grouped extends Report {
 			this.resolveAllNames().then(function() { //Start by recovering all definitions names
 				this.Ready = true;
 				GetId("Report_Ready").remove();
-				this.compute(); //Compute
 			}.bind(this));
 		}
 		return this;
@@ -189,6 +216,7 @@ class Report_Grouped extends Report {
 		html += "<tr> <td style=\"width: 1.1em\"></td> <td></td> <td style=\"text-align: center\"><div style=\width: 194px;\"><b>Columns</b></div>"; //First row start
 		html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Cols', Level: 2})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\" style=\" "; //Level 2 Col drop
 		if(log.Cols[0].length == 0) {html += " display: none;"} //Hide the level 2 if nothing present in level 1
+		if(this.ColumnOnly) {html += " float: none;"} //Remove the float to keep the two levels on top of each others
 		html += "\"><p class=\"SmallTitle\" style=\"color: darkred\">Level 2</p>"; 
 		log.Cols[1].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
 		html += "</div>";
@@ -197,16 +225,20 @@ class Report_Grouped extends Report {
 		log.Cols[0].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
 		html += "</div>";
 		html += "</td> </tr>"; //End Second Row
-		html += "<tr> <td style=\"writing-mode: sideways-lr; width: 1.1em;\"><b>Rows</b></div></td><td>"; //Second row start
-		html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Rows', Level: 2})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\" style=\" "; //Level 2 Row drop
-		if(log.Rows[0].length == 0) {html += " display: none"} //Hide the level 2 if nothing present in level 1
-		html += "\"><p class=\"SmallTitle\" style=\"color: darkred\">Level 2</p>"; 
-		log.Rows[1].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
-		html += "</div>";
-		html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Rows', Level: 1})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\""; //Level 1 Row drop
-		html += "style=\" \"><p class=\"SmallTitle\" style=\"color: blue\">Level 1</p>"; 
-		log.Rows[0].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
-		html += "</div>";
+		html += "<tr>"; //Start Second Row
+		if(this.ColumnOnly) {html += "<td></td> <td>"} //Leave two blocks empty for column-only mode
+		else {
+			html += "<td style=\"writing-mode: sideways-lr; width: 1.1em;\"><b>Rows</b></div></td><td>"; //Row legend
+			html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Rows', Level: 2})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\" style=\" "; //Level 2 Row drop
+			if(log.Rows[0].length == 0) {html += " display: none"} //Hide the level 2 if nothing present in level 1
+			html += "\"><p class=\"SmallTitle\" style=\"color: darkred\">Level 2</p>";
+			log.Rows[1].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
+			html += "</div>";
+			html += "<div class=\"Droppable\" ondrop=\"Report_Grouped.drop(event, {Type: 'Rows', Level: 1})\" ondragover=\"Report_Grouped.dragOver(event)\" ondragenter=\"Report_Grouped.dragEnter(event)\" ondragleave=\"Report_Grouped.dragLeave(event)\""; //Level 1 Row drop
+			html += "style=\" \"><p class=\"SmallTitle\" style=\"color: blue\">Level 1</p>"; 
+			log.Rows[0].forEach(function(item) {html += this.htmlForItem(item)}, this); //Add the items that were logged at this location
+			html += "</div>";
+		}
 		html += "</td><td ondrop=\"Report_Grouped.dropDelete(event)\" ondragover=\"Report_Grouped.dragOver(event)\" style=\"text-align: center\">";
 		html += "<div class=\"LinkCtrl_Icon LinkCtrl_IconBig\" style=\"background-position: -200px 0px; opacity: 20%\"></div>"; //Trash bin icon
 		html += "<p class=\"Note\" >Drop here to remove</p></td> </tr>"; //Last cell //style=\"text-align: center\"
@@ -325,132 +357,62 @@ class Report_Grouped extends Report {
 			}.bind(this));
 		}.bind(this));
 	}
-	updateNames(range, index) { //Update the names for the rangeIndex provided, or all the ranges if nothing is passed
-		let source = this.Ranges; //Fallback that will be used if range is undefined
-		if(range !== undefined) { //A specific range is provided
-			source = Array(this.Ranges.length);
-			source[index] = range; //This is to ensure we can use the position in the array to find the correct definitions
-		}
-		let collection = GetId("Output").getElementsByTagName("TH");
-		let l = collection.length;
-		for(let i=0; i<l; i++) { //Travel the collection and search for matching names
-			let th = collection[i];
-			let string = th.innerHTML;
-			if(th.hasAttribute("RootName")) {string = th.getAttribute("RootName")} //In this case, recover the saved generic name
-			else {th.setAttribute("RootName", string)} //Save the generic name before making modifications
-			source.forEach(function(r, j) { //For each range
-				if(r !== undefined && this.ResolvedNames[j] !== undefined) { //When a single range is provided, only one element of the array is defined. And when the range has no definitions, the resolved names are absent
-					let name = r.Name + " #";
-					let n = name.length;
-					let pos = string.indexOf(name);
-					if(pos > -1) { //The title includes this name
-						pos += n; //Update position to start at the #
-						let end = string.indexOf(" ", pos); //Find the position of the next space
-						let RangeIndex = Number(string.substring(pos, end)); //Extract the range index value
-						if(end == -1) {RangeIndex = Number(string.substring(pos))} //In cases where the name is not succeded by a unit or another area, the rangeIndex is up to the end of the string
-						th.innerHTML = string.replace(name + RangeIndex, this.ResolvedNames[j][RangeIndex - 1]); //Replace the generic name with the definition
-					}
-				}
-			}, this);
-		}
-	}
-	getValues(selectedPlate) { //Retrieve all the parameter values for the selected plate, as a 2D array the size of the plate
-		let o = {Items: 0, Values: [], Params: []} //Output object containing the data for one plate
-		let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
-		this.Params.forEach(function(p, i) { //Initialize empty array to receive the values for each selected parameters that is set as numeric
-			if(p.Selected && p.Numeric) { //This parameter is selected and numeric type, continue
-				o.Params.push({Index: i, Name: p.Name, ResultIndex: resultIndex});
-				o.Values.push([]); //Create empty arrays to receive the values for each parameter
-			}
-		}, this);
-		this.waitMessage(o.Params); //This displays waiting message
-		let custom = function(well, plate, row, output, parser) { //The function to run on each line
-			if(plate == selectedPlate) { //We are on the right plate
-				let wellIndex = well.Index;
-				output.Params.forEach(function(param, i) { //Log the values for all parameters
-					output.Values[i][wellIndex] = row[param.Index];
-				});
-			}
-		}
-		return new Promise(function(resolve) {
-			this.Result.Mapper.scan(this.Result, {Custom: custom}, o).then(function(data) {
-				resolve(data);
-			});
-		}.bind(this));
-	}
-	waitMessage(params) { //Display a waiting message
-		let msg = "<br><span class=\"Warning\">Parsing values, please wait...</span>";
-		params.forEach(function(param, i) { //Process all parameters
-			let bloc = Report.getBloc(this, Report.blocName(param));
-			bloc.Sections.forEach(function(s) {
-				if(s.Summary === undefined) {s.replaceContent(msg)}
-			});
-		}, this);
+	isReady(rows, cols) {
+		if(cols[0].length == 0) {Report_Grouped.msg_noCol(); return false} //Missing column
+		if(this.Ready != true) {Report_Grouped.msg_pleaseWait(); return false} //No ready
+		Report_Grouped.msg_clear(); //No more message needed
+		return true;
 	}
 	compute() { //Do the job
 		let rows = this.UI.Selected.Rows;
 		let cols = this.UI.Selected.Cols;
-		if(rows[0].length == 0 || cols[0].length == 0 || this.Ready != true) {Report_Grouped.welcome(); return this} //Missing rows or columns
-		let plate = this.UI.Plate.Selected;
+		if(this.isReady(rows, cols) == false) {return this};
+		let plate = this.SelectedPlate;
 		this.getValues(plate).then(function(data) {
 			data.Params.forEach(function(p, i) {
-				let section = Report.getBloc(this, Report.blocName(p)).getSection("Values", {TableType: "Grouped"});
+				let section = Report.getBloc(this, Report.blocName(p)).getSection("Values", {Type: "Single"});
 				let json = Analyzer.encodeJSON(rows, cols, data.Values[i]); //Get a JSON object as data
 				section.Data = JSON.stringify(json); //Store it as a string
-				section.update(json); //Renew the content within the section
-			}, this);
-		}.bind(this));
-	}
-	update() { //Update the sections without parsing all the data again
-		//let aggregation = this.UI.DataView.Selected;
-		this.Blocs.forEach(function(b) { //Update all blocs
-			let section = b.getSection("Values", {TableType: "Grouped"});
-			section.update();
-		});
-	}
-	/*valueTable(rows, cols, data, paramIndex, aggregation) { //The table that will hold the data
-		let header = this.header(rows, cols); //Make headers
-		return Analyzer.groupedTable(header, rows, cols, data.Values[paramIndex], aggregation);
-	}
-	header(rows, cols) { //Header for the table.
-		let html = ["", "", "", ""];
-		let LeftSpan = "<tr>" + Report_Grouped.ColSpan(rows);
-		let LevelTwo = Report_Grouped.header(cols[1]);
-		let LineFour = LevelTwo.TwoLine; //Whether line four should be used or not
-		let colSpan = "";
-		if(LevelTwo.Span > 1) {colSpan = " colspan=\"" + LevelTwo.Span + "\""}
-		let rowSpan = "";
-		let LineTwo = cols[0].some(function(c) {return c.Values.length > 1}); //This will be true if at least one of the column has two values and should fit on two lines
-		if(LineTwo) {rowSpan = " rowspan=\"2\""}
-		cols[0].forEach(function(c, i) { //Travel level one data
-			if(i == 0) { //Add the leftspan everywhere on first use
-				html = html.map(function(h) {return h += LeftSpan});
-			}
-			let l = c.Values.length;
-			if(l == 1) { //Only one value for this group
-				html[0] += "<th" + colSpan + rowSpan + ">" + Analyzer.header(c) + "</th>";
-				if(cols[1].length > 0) { //Add the corresponding level 2 data
-					html[2] += LevelTwo.Top;
-					html[3] += LevelTwo.Bottom;
+				if(this.ColumnOnly && this.Result.PlatesID.length > 1) { //If there are more than one plate in the result file, also create/update the Plate summary table (only for column reports)
+				//json.StatRows = true; //Activate the statistical rows at the end of the table	
+				let summary = Report.getBloc(this, Report.blocName(p)).getSection("Plate Summary", {Type: "StatsTable", Summary: true, JSON: json, Changed: this.HasChanged});
+					summary.addRow(json, plate);
 				}
-			} 
-			else { //Multiple values
-				html[0] += "<th colspan=\"" + Math.max(l, l * LevelTwo.Span) + "\">" + Analyzer.header(c) + "</th>"; //The header for the group
-				c.Values.forEach(function(v) { //Append all the values 
-					html[1] += Analyzer.valueHeader(v, LevelTwo.Span);
-					if(cols[1].length > 0) { //Add the corresponding level 2 data
-						html[2] += LevelTwo.Top;
-						html[3] += LevelTwo.Bottom;
-					}
-				});
+			}, this);
+			this.update(); //Update the sections
+		}.bind(this));
+		return this;
+	}
+	async statsAllPlates() { //Compute data for all plates, one after the other
+		let rows = this.UI.Selected.Rows;
+		let cols = this.UI.Selected.Cols;
+		if(this.isReady(rows, cols) == false) {return this};
+		this.Cancel = false;
+		let plates = this.Result.PlatesID;
+		Report.lock(this, plates.length); //Lock the report and start
+		let plateCounter = Report.plateIterator(plates); //A generator to loop over the plates
+		let current = plateCounter.next();
+		let running = 0;
+		while(current.done == false && this.Cancel == false) { //Do this until the plate counter is exhausted or the user cancel the action
+			let currentPlate = current.value; //Current plate to analyze
+			if(Report.hasData(this, currentPlate) == false) { //There is no need to parse if the plate has already been computed
+				let data = await this.getValues(currentPlate);
+				data.Params.forEach(function(p, i) {
+					let section = Report.getBloc(this, Report.blocName(p)).getSection("Values", {Type: "Single"});
+					let json = Analyzer.encodeJSON(rows, cols, data.Values[i]); //Get a JSON object as data
+					section.Data = JSON.stringify(json); //Store it as a string
+					let summary = Report.getBloc(this, Report.blocName(p)).getSection("Plate Summary", {Type: "StatsTable", Summary: true, JSON: json, Changed: false});
+					summary.addRow(json, currentPlate);
+				}, this);
+				this.update(); //Update the sections
 			}
-		});
-		let out = html[0] + "</tr>";
-		if(LineTwo) {out += html[1] + "</tr>"}
-		if(cols[1].length > 0) { //Level 2 data
-			out += html[2] + "</tr>";
-			if(LineFour) {out += html[3] + "</tr>"}
+			this.UI.Plate.setValue(running); //Ensures that the control is set at the same value as the last computed plate
+			this.pairStatus(running); //Also adjust the pairing info
+			current = plateCounter.next();
+			running++;
+			Report.plateCount(running + 1);
 		}
-		return out;
-	}*/
+		Report.unlock();
+		return this;
+	}
 }
