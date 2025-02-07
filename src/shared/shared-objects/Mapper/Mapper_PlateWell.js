@@ -62,4 +62,24 @@ class Mapper_PlateWell extends Mapper {
 			});
 		});
 	}
+	match(o, I) { //Match the array of data against the file and return the matched elements
+		let plate = Editor.Plate;
+		if(plate === undefined) {return Promise.resolve("")} //Failure 
+		let w = this.WellCol;
+		let p = this.PlateCol;
+		return new Promise(function(resolve) { //Return a promise that fulfills with the data needed
+			o.Parser.stream(function(row, selected, parser) { //Do this for each row
+				let here = Well.parseIndex(row[w], plate);
+				if(here !== undefined && row[p] !== undefined) { //Valid well found in a valid plate, do what is needed
+					I.Array.forEach(function(a) { //Scan the array for any match
+						if(row[p] == a.Plate && here.Index == a.WellIndex) { //Match
+							a.Resolved = row[I.Column]; //Update the object with the resolved name
+						}
+					});
+				}
+			}, function() { //Do this when done
+				resolve(I.Array);
+			});
+		});
+	}
 }

@@ -4,7 +4,7 @@
 class InputObject_Manual extends InputObject {
 	constructor(data) {
 		super();
-		var d = data.Data;
+		let d = data.Data;
 		if(d === undefined) {console.warn("No data transfered to InputObject manual. Aborted"); return this}
 		this.RawData = d; //Raw data for the input: original data submitted by the user
 		this.Source = "Manual";

@@ -6,6 +6,5 @@
 
 Pairing can be done using the auto-pairing option (pair by name).
 Use the "Controls" tool to visualize the controls for each plate.
-Use the "Hits" tool to select hits above a given threshold.
 
 Note: the data in the result file are results from real-world experiments

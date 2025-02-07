@@ -26,7 +26,10 @@ class LinkCtrl {
 	static new(type, I) { //Create a new LnkCtrl object of the desired type
 		if(I === undefined) {console.error("Required options missing for LinkCtrl. Aborted."); return} //Check for required options
 		if(I.ID === undefined || I.ID == "") {console.error("Required ID missing for LinkCtrl. Aborted."); return}
-		if(I.Default === undefined) {console.error("Required default value missing for LinkCtrl. Aborted."); return}
+		if(type != "Button" && type != "ButtonBar" && I.Default === undefined) { //Default value required, except for buttons
+			console.error("Required default value missing for LinkCtrl. Aborted.");
+			return;
+		}
 		switch(type) { //Create the desired element
 			case "Checkbox": return new LinkCtrl_Checkbox(I);
 			case "Text": return new LinkCtrl_Text(I);
@@ -36,11 +39,16 @@ class LinkCtrl {
 			case "Color": return new LinkCtrl_Color(I);
 			case "Radio": return new LinkCtrl_Radio(I);
 			case "File": return new LinkCtrl_File(I);
+			case "Button": return new LinkCtrl_Button(I);
+			case "ButtonBar": return new LinkCtrl_ButtonBar(I);
 			default: //Exit if the type is unknown
 				console.error("Unknown type requested for LinkCtrl (" + type + "). Aborted.");
 				return;
 		}
 	}
+	//***************
+	//DEPRECATED: USE THE LINKCTRL.NEW IMPLEMENTATION INSTEAD
+	//***************
 	static button(I) { //Output the node for a button with the desired options: ID, Title, Label, Disabled, Click, Icon
 		if(I === undefined) {console.error("Required options missing for Button. Aborted."); return} //Check for required options
 		var span = document.createElement("span"); //Spawn the node for the button
@@ -72,6 +80,9 @@ class LinkCtrl {
 		}, this);
 		return div;
 	}
+	//***************
+	//***************
+	//***************
 	static icon(I) { //Create the html needed to display an icon, based on the provided options
 		let html = "";
 		if(I.Space) {html += "&nbsp;"}
@@ -184,7 +195,7 @@ class LinkCtrl {
 	}
 	bindEvents() {console.warn("bindEvents function not defined for this control; no events attached")} //Attach the events to the control. Specific to each control and added here only as default fallback
 	setValue(v) { //Set the value of the control, updating the html classes if possible
-		var me = GetId(this.Me);
+		let me = GetId(this.Me);
 		this.updateValue(v, me);
 		return this;
 	}
@@ -198,14 +209,18 @@ class LinkCtrl {
 	default() { //Set the value of the control to its defaults
 		return this.setValue(this.Default);
 	}
-	remove() { //Remove the element from the page
-		var me = GetId(this.Me);
+	remove() { //Remove the element from the page. For elements with NewLine = true, the <br> will also be deleted
+		let me = GetId(this.Me);
 		if(me === null) {return this} //Nothing to do if this control does not exist on the page
+		if(this.NewLine === true) { 
+			let next = me.nextElementSibling
+			if(next.nodeName == "BR") {next.remove()} //Check that we are indeed targeting a br before removing anything important...
+		}
 		me.remove(); //Delete the element
 		return this;
 	}
 	focus() { //Set the focus to the element. This uses the native focus() of the browser and results may vary...
-		var me = GetId(this.Me);
+		let me = GetId(this.Me);
 		if(me) {me.focus()}
 		return this;
 	}

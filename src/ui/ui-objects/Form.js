@@ -37,7 +37,7 @@ class Form {
 		if(f === null) {console.warn("Form '" + id + "' not accessible for buttons replacement"); return this}
 		if(buttons === undefined) {buttons = []}
 		let footer = f.getElementsByClassName("Form_Footer");
-		footer[0].replaceWith(this.footer({Buttons: buttons}));
+		footer[0].replaceWith(this.footer({ID: id, Buttons: buttons}));
 	}
 	//These methods are for internal use and should not be called directly
 	static addMask(I) { //Create a mask in the document to create the background and give modal effect
@@ -89,6 +89,7 @@ class Form {
 	static footer(I) { //Footer section with buttons. Created as a node because buttons have functions attached to them
 		let footer = document.createElement("div");
 		footer.className = "Form_Footer";
+		footer.id = I.ID + "Form_Footer";
 		if(I.Buttons) {
 			I.Buttons.forEach(function(b, i) {
 				if(i > 0) {footer.insertAdjacentHTML("beforeend", "&nbsp;")} //To space the buttons evenly

@@ -33,7 +33,7 @@ class Coordinate {
 		if(Array.isArray(val)) { //An array of values
 			let l = val.length; //Total number of values in the array
 			let flat = val.map(function(x) { //Flatten objects inside the array
-				if(x.Value !== undefined) {return x.Value}
+				if(x!== undefined && x!== null && x.Value !== undefined) {return x.Value}
 				return x;
 			});
 			let v = flat.filter(function(x) { //Then get the array of numerical elements only

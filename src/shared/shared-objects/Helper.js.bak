@@ -1,0 +1,439 @@
+//***************************************************************************************
+// HELPER object - Root object for handling of functions to help reformat/re-arrange data
+//***************************************************************************************
+class Helper {
+	constructor() {}
+	//Static Methods
+	static match(Mother, Child, MatchConfig, buttonTarget, progressTarget) { //Match elements from the Child array within the Mother input object (The first columns will be used)
+		let lM = Mother.Parser.SelectedRows;
+		if(Mother.Parser.Options.NoHeaders.getValue() == false) {lM--}
+		let t = GetId(buttonTarget);
+		this.MatchData = {
+			Mother: Mother,
+			MotherLines: lM,
+			MatchConfig: MatchConfig, //{Mode, WellCol, PlateCol}
+			Child: Child,
+			ChildLines: Child.length,
+			Matches: 0,
+			Percent: 0,
+			CurrentMotherRow: 0,
+			CurrentChildRow: 0,
+			ChunkSize: 5000, //Should be fine for most of the cases
+			Threads: navigator.hardwareConcurrency, //Limit number of threads to keep the computer running smoothly,
+			ButtonTarget: t, //This will fall to null if nothing provided or element not found
+			ProgressTarget: GetId(progressTarget),
+		}
+		if(t !== null) { //If a target has been provided for the buttons
+			let buttons = [
+				{Label: "Pause", Click: function() {this.matchProgress("pauseWait"); this.Workers.forEach(function(w) {w.postMessage({Pause: true})})}.bind(this), Title: "Pause the matching process"},
+				{Label: "Resume", Click: function() {this.Workers.forEach(function(w) {w.postMessage({Resume: true})})}.bind(this), Title: "Resume the matching process"},
+				{Label: "Cancel", Click: function() {this.matchProgress("cancel"); this.matchStop()}.bind(this), Title: "Cancel the matching process"},
+			];
+			t.append(LinkCtrl.buttonBar(buttons));
+		}
+		this.matchStart();
+		return this;
+	}
+	static matchStart() { //Start the match
+		let O = this.MatchData;
+		let n = O.Threads;
+		this.Workers = [];
+		for(let i=0;i<n;i++) { //Initialize all the subworkers
+			this.Workers.push(this.matchWorker(i));
+		}
+		O.Results = Array(O.ChildLines).fill("");
+		O.Done = Array(n).fill(false);
+		this.matchProgress();
+		this.matchNext(n);
+	}
+	static matchProgress(state) {
+		let t = O.ProgressTarget;
+		if(t === null) {return this} //Exit here if there is not target to display the msg
+		let O = this.MatchData;
+		let msg = "";
+		let percent = "Completed " + O.CurrentMotherRow + " rows (" + O.Percent + "%). ";
+		let match = "Found " + O.Matches + " matches.";
+		switch(state) {
+			case "pauseWait":  msg = "Waiting for worker to pause... "; break;
+			case "Paused": msg = "Worker paused. " + percent + match; break;
+			case "cancel": msg = "Work cancelled. " + percent + match; break;
+			case "resumeWait": msg = "Resuming work... "; break;
+			case "done": msg = "Match completed! " + match; break;
+			default: msg = "Match on-going... " + percent + match;
+		}
+		t.innerHTML = "<p>" + msg + "</p>";
+		return this;
+	}
+	static matchNext(n, I) {
+		let O = this.MatchData;
+		if(I) {
+			O.Results = O.Results.map(function(r, j) {
+				if(I.Results[j]) {return r + I.Results[j]}
+				else {return r}
+			});
+			O.Done[I.WorkerDone] = true;
+			let bool = O.Done.reduce(function(a, b) {return a && b});
+			if(bool == false) { //Wait for all worker to submit their results
+				return this;
+			}
+			else { //All workers have finished
+				if(O.CurrentChildRow >= O.ChildLines) { //All child rows processed:
+					O.CurrentMotherRow += I.MotherDone; //This chunk of mother is done and need to move to the next one
+					let dom = GetId("Output_match");
+					let out = O.Results.reduce(function(a, b) {
+						if(b != "") {return a + "\n" + b }
+						else {return a}
+					});
+					dom.append(out + "\n");
+					O.Results = Array(O.ChunkSize.getValue()).fill("");
+				}
+				O.Done = Array(n).fill(false);
+			}
+		}
+		if(O.CurrentMotherRow >= O.MotherLines) { //All mother rows processed
+			this.matchProgress("done");
+			this.matchStop();
+			return this;
+		}
+		if(O.CurrentChildRow == 0 || O.CurrentChildRow >= O.ChildLines) { //All child rows processed
+			this.Workers.forEach(function(w) {w.postMessage({Reset: true})});
+			O.CurrentChildRow = 0; //Restart streaming the child with another chunk from mother
+			Promise.all([this.chunkMother(), this.chunkChild(n)]).then(function() { //Stream the mother and child in parallel
+				this.Workers.forEach(function(w) {w.postMessage({StartMatching: true})}); //When done, send a signal to the workers to start processing
+			}.bind(this));
+		}
+		else { //Continue streaming the child
+			this.chunkChild(n).then(function() {
+				this.Workers.forEach(function(w) {w.postMessage({StartMatching: true})});
+			}.bind(this));
+		}
+	}
+	static matchStop() {
+		let t = this.MatchData.ButtonTarget;
+		if(t) {t.innerHTML = ""}
+		this.Workers.forEach(function(w) {w.terminate()});
+		this.Workers = undefined; //Garbage collection
+		return this;
+	}
+	static chunkMother() { //Send the mother to each of the worker
+		let O = this.MatchData;
+		let limit = O.CurrentMotherRow + O.ChunkSize;
+		let k = 0;
+		return new Promise(function(resolve) {
+			O.Mother.Parser.stream(function(R, Mline, parser) { //Chunk the mother to the workers
+				if(Mline >= O.CurrentMotherRow) {
+					if(Mline < limit) {
+						this.Workers.forEach(function (w) {w.postMessage({Mother: R})});
+						//O.Results[k] += R[0];
+						k++;
+					}
+					else {parser.abort()}
+				}
+			}.bind(this), function() { //On complete (will fire when the parser is aborted)
+				resolve()
+			}.bind(this));
+		}.bind(this));
+	}
+	static chunkChild(n) { //Chunk a piece of child in each worker
+		let O = this.MatchData;
+		let limit = O.ChunkSize;
+		if(O.ChildLines - O.CurrentChildRow < n * O.ChunkSize) {limit = Math.ceil((O.ChildLines - O.CurrentChildRow) / n)} //Share the remaining workload equally
+		let i = 0;
+		return new Promise(function(resolve) {
+			for(let i=0;i<n;i++) { //For each worker
+				for(let j= O.CurrentChildRow + i * limit; j < O.CurrentChildRow + (i+1) * limit; j++) {
+					this.Workers[i].postMessage({Child: O.Child[j]});
+				}
+			}
+			resolve();
+		}.bind(this));
+	}
+	static matchWorker(index) { //What the worker will do on incoming message
+		let f = function(e) { //Need to return a function that will be converted to a string and injected in the embedded worker through blob
+			let I = e.data; //Incoming object
+			if(I.Pause) {self.Running = false; return}
+			if(I.Resume) {
+				if(self.Running == false) {
+					self.Running = true;
+					postMessage({Resume: true});
+					return;
+				}
+			}
+			if(self.Running) {
+				if(I.Reset) {self.Mother = []; return}
+				if(I.Mother) {self.Mother.push(I.Mother); return}
+				if(I.Child) {self.Child.push(I.Child); return}
+				if(I.StartMatching) {
+					//let matches = Array(self.Mother.length).fill("");
+					let matches = []; //Array to recover the matches
+					self.Mother.forEach(function(m, i) { //Loop the mother
+						self.Child.forEach(function(c, j) { //Loop the child
+							if(self.match(m, c)) {
+								
+							}
+							/*if(m == c[0]) {
+								let out = "";
+								c.forEach(function(d) {out += "\t" + d});
+								matches[i] += out;
+								postMessage({Match: true});
+							}*/
+						});
+					});
+					postMessage({Done: true, ChildDone: self.Child.length, MotherDone: self.Mother.length, Results: matches, Index: self.Index});
+					self.Child = []; //Reset the child to receive new chunk
+				}
+				if(!self.Running) {postMessage({Paused: true})}
+			}
+			else {postMessage({Paused: true})}
+		}
+		let blob = new Blob(["self.Index = " + index + "; self.MatchConfig = " + JSON.stringify(this.MatchData.MatchConfig) + ", self.match = " + this.match().toString() + ", self.Mother = []; self.Child = []; self.Running = true; onmessage = " + f.toString()], {type: "application/javascript"});
+		let w = new Worker(URL.createObjectURL(blob));
+		w.onmessage = function(e) {
+			let R = e.data;
+			let O = this.MatchData;
+			if(R.Match) {O.Matches++; return}
+			if(R.Done) {
+				O.Percent += 100 * ((R.ChildDone * R.MotherDone) / (O.MotherLines * O.ChildLines));
+				O.CurrentChildRow += R.ChildDone;
+				this.matchNext(O.Threads, {WorkerDone: R.Index, MotherDone: R.MotherDone, Results: R.Results});
+				this.matchProgress();
+				return;
+			}
+			if(R.Resume) {
+				this.matchProgress("resumeWait");
+				this.matchNext(O.Threads);
+				return;
+			}
+			if(R.Paused) {
+				this.matchProgress("Paused");
+			}
+		}.bind(this);
+		return w;
+	}
+	static match() { //Create and return the function needed to check whether there is a match between the incoming mother and child rows
+		let mode = this.MatchData.MatchConfig.Mode;
+		switch(mode) {
+			case "PlateWell": 
+				return function(m, c) { //In this case the match should look at the row and well columns
+					let w = self.MatchConfig.WellCol;
+					let p = self.MatchConfig.PlateCol;
+					let wellIndex = Well.parseIndex(m[w], Editor.Plate);
+					return wellIndex == c[0] && m[p] == c[1]; //Both well and column should match
+				}
+			case "Well":
+				return function(m, c, plateIndex) { //Plate data are generic
+					let w = self.MatchConfig.WellCol;
+					let wellIndex = Well.parseIndex(m[w], Editor.Plate);
+					return wellIndex == c[0] && plateIndex == c[1];
+				}
+			case "Plate": //Only plate data and use the rangeIndex
+				return function(m, c, itemIndex) {
+					let p = self.MatchConfig.PlateCol;
+					return m[p] == c[1] && itemIndex == c[2];
+				}
+			case "Direct": //Use the rangeIndex
+				return function(m, c, plateIndex, itemIndex) {
+					return plateIndex == c[1] && itemIndex == c[2];
+				}
+		}
+	}
+	/*static init() { //Initialize the object and controls
+		this.Anchors = { //Anchors for the root elements of the Plotter
+			Input: "Input", //ID of the html element hosting the input options
+			Actions: "Actions", //ID of the html element hosting the action buttons
+			Output: "Output", //ID of the html element hosting the output tab
+		}
+		this.Inputs = new RespTable({ID: this.Anchors.Input, Fields: ["Source", "Name", "Size", "Other"], Preserve: true, RowNumbers: true, Multiple: true, OnSelect: function() {}.bind(this)});
+		this.Inputs.init();
+		this.OutputTab = new TabControl({ //The main tab used for data output
+			ID: this.Anchors.Output,
+			AfterDelete: function(i) {this.delete(i)}.bind(this),
+		});
+		let buttons = [
+			{Label: "Add Input", Click: function() {
+				Form_Import.open({OnClose: function(data) {
+					this.Inputs.Array = this.Inputs.Array.concat(data);
+					this.Inputs.update();
+				}.bind(this)});
+			}.bind(this)},
+			{Label: "Intertwin", Click: function() {this.intertwin()}.bind(this), Title: "Intertwin 2 datasets by alternating 1 column from the mother dataset and 1 column from the child"},
+			{Label: "Flatten", Click: function() {this.flatten()}.bind(this), Title: "Flatten a set of data by appending all elements into a single column (Headers are ignored)"},
+			{Label: "Match", Click: function() {this.match()}.bind(this), Title: "Match elements from the Child list within the Mother list (Only the first column of each dataset will be used)"},
+			//{Label: "Columbus Stitching config", Click: function() {this.stitch()}.bind(this), Title: "Read the Columbus ImageIndex file and extract the tile configuration information"},
+		];
+		GetId(this.Anchors.Actions).append(LinkCtrl.buttonBar(buttons)); //initialize the buttons
+	}*/
+	/*static textArea(value, id) { //Output the html for a text area with the value passed
+		let add = "";
+		if(id) {add = "id=\"" + id + "\""}
+		return "<textarea " + add + " style=\"width: 500px; height: 250px; white-space: pre;\">" + value + "</textarea>";
+	}*/
+	/*static intertwin() { //Intertwin 2 datasets by alternating 1 column from the mother dataset and 1 column from the child
+		let inputs = this.Inputs.Selected;
+		if(inputs.length == 2) {
+			let PromiseMother = new Promise(function(resolve) {
+				inputs[0].Parser.bulk(function(dataMother) { //It is assumed that the data are not big here
+					let Mother = [inputs[0].Headers].concat(dataMother);
+					resolve(Mother);
+				});
+			});
+			let PromiseChild = new Promise(function(resolve) {
+				inputs[1].Parser.bulk(function(dataChild) { //It is assumed that the data are not big here
+					let Child = [inputs[1].Headers].concat(dataChild);
+					resolve(Child);
+				});
+			});
+			Promise.all([PromiseMother, PromiseChild]).then(function(values) {
+				let M = values[0]; //Mother data
+				let C = values[1]; //Child data
+				let lines = M.length;
+				let cols = M[0].length;
+				let info = "<p>Intertwined Child data (\"" + inputs[1].Name + ")\" within \"" + inputs[0].Name + "\".</p>";
+				let out = "";
+				for(let i=0;i<lines;i++) {
+					for(let j=0;j<cols;j++) {
+						let c = "";
+						if(C[i]) {c = (C[i][j] || "")} //Cases were there is less child elements
+						out += M[i][j] + "\t" + c + "\t";
+					}
+					out += "\n";
+				}
+				this.OutputTab.addTab({Label: "Intertwin", Controls: ["Delete"], Content: {Type: "HTML", Value: info + this.textArea(out)}, SetActive: true});
+			}.bind(this));
+		}
+		else {alert("Two inputs must be selected!")}
+	}*/
+	/*static flatten() { //Flatten a set of data by appending all elements into a single column. Headers are ignored.
+		let inputs = this.Inputs.Selected;
+		if(inputs.length == 1) {
+			inputs[0].Parser.bulk(function(data) { //It is assumed that the data are not big here
+				let out = "";
+				let lines = data.length;
+				let cols = data[0].length;
+				for(let j=0;j<cols;j++) {
+					for(let i=0;i<lines;i++) {
+						let m = data[i][j];
+						if(m && m != "") {out += m + "\n"}
+					}
+				}
+				let info = "<p>Flattened data from \"" + inputs[0].Name + "\".</p>";
+				this.OutputTab.addTab({Label: "Flatten", Controls: ["Delete"], Content: {Type: "HTML", Value: info + this.textArea(out)}, SetActive: true});
+			}.bind(this));
+		}
+		else {alert("One input must be selected!")}
+	}*/
+	/*static stitch(I) {
+		let inputs = this.Inputs.Selected;
+		if(inputs.length != 1) {alert("One input must be selected!"); return}
+		if(I === undefined) { //This mode is to parse the metadata only
+			let h = inputs[0].Headers;
+			let l = h.length;
+			let meta = { //Prepare an object holding the meta information
+				Channels: -1,
+				ChannelNames: undefined,
+				Positions: [],
+				HighestField: 0,
+				ResX: 0,
+				ResY: 0,
+				Index: {
+					W: -1, //WellName
+					C: -1, //Channel
+					F: -1, //Field
+					CN: -1, //ChannelNames
+					X: -1, //X position
+					Y: -1, //Y position
+					FileName: -1, //FileName position
+				}
+			};
+			let done = 0;
+			let i = 0;
+			while(done < 10 && i < l) { //Identify the column index using the header
+				switch(h[i]) {
+					case "WellName": meta.Index.W = i; done++; break; //Found Well column
+					case "Channel": meta.Index.C = i; done++; break; //Found channel column
+					case "Field": meta.Index.F = i; done++; break; //Found field column
+					case "ChannelName": meta.Index.CN = i; done++; break; //Found channel column
+					case "PositionX@um": meta.Index.X = i; done++; break; //Found X position column
+					case "PositionY@um": meta.Index.Y = i; done++; break; //Found Y position column
+					case "NumberOfChannels": meta.Channels = i; done++; break; //Found nb of channels
+					case "sourcefilename": meta.Index.FileName = i; done++; break; //Found nb of channels
+					case "ImageResolutionX@um": meta.ResX = i; done++; break; //Found resolution X
+					case "ImageResolutionY@um": meta.ResY = i; done++; break; //Found resolution Y
+				}
+				i++;
+			}
+			if(done < 10) {alert("Could not find all required columns..."); return}
+			inputs[0].Parser.stream(function(row, line, parser) { //Columbus files are big, so stream is appropriate
+				if(line == 0) { //Log the constants using first row
+					meta.Channels = Number(row[meta.Channels]);
+					meta.ChannelNames = Array(meta.Channels); //Generate empty array
+					meta.ResX = Number(row[meta.ResX]); //Positions are defined in um and need to be converted in px for correct stitching
+					meta.ResY = Number(row[meta.ResY]);
+				}
+				if(line < meta.Channels) { //Record the channel names on the first lines
+					let n = Number(row[meta.Index.C]) - 1;
+					meta.ChannelNames[n] = row[meta.Index.CN];
+				}
+				let field = Number(row[meta.Index.F]);
+				if(field > meta.HighestField) { //Found a new field
+					meta.Positions.push({F: field, X: row[meta.Index.X], Y: row[meta.Index.Y]}); //Log the positions
+					meta.HighestField = field;
+				}
+				else {if(field < meta.HighestField) {parser.abort()}} //All fields were found, no need to travel the rest of the file
+			}.bind(this), function(totalLines) {this.stitch_OutputConfig(meta)}.bind(this)); //Completion function
+		}
+		else { //Prepare the output using passed configuration
+			let zip = new JSZip();
+			GetId("ZipDownload").innerHTML = "Preparing files, please wait...";
+			let w = I.Meta.Index.W; //Shortcuts for the indices
+			let x = I.Meta.Index.X;
+			let y = I.Meta.Index.Y;
+			let c = I.Meta.Index.CN;
+			let f = I.Meta.Index.FileName;
+			let Rx = I.Meta.ResX;
+			let Ry = I.Meta.ResY;
+			let channel = I.Channel;
+			let currentWell = "";
+			let out = "";
+			inputs[0].Parser.stream(function(row, line, parser) {
+				let well = row[w];
+				if(well == currentWell) { //Accumulate the data in the buffer
+					out += row[f] + ";;(" + Math.round(row[x] / Rx) + ", " + Math.round(-row[y] / Ry) + ")\n";
+				}
+				else {
+					if(line > 0) { //Create the zip file, except at the first row because the buffer is empty
+						zip.file(currentWell + "_TileConfig.txt", out);
+					}
+					currentWell = well;
+					out = "dim = 2\n" + row[f] + ";;(" + Math.round(row[x] / Rx) + ", " + Math.round(-row[y] / Ry) + ")\n";; //Reset the buffer with the new row; don't forget the header!
+				}
+			}.bind(this), function(totalLines) { //Completion function
+				zip.file(currentWell + "_TileConfig.txt", out); //The last well
+				zip.generateAsync({type: "base64"}).then(function(b) {
+					GetId("ZipDownload").innerHTML = "Click <a href=\"data:application/zip;base64," + b + "\">this link</a> to download the zip folder containing your files";
+				});
+			}.bind(this));
+		}
+	}
+	static stitch_OutputConfig(meta) { //A form indicating the results of meta parsing and asking the user for the desired output configuration
+		let id = "FormStitch";
+		let channelSelect = LinkCtrl.new("Select", {ID: "ChannelSelect", Label: "Channel", Default: 0, List: meta.ChannelNames, Title: "Select the channel for stitching"});
+		let html = "";
+		html += "<p><b>Metadata information found:</b>";
+		html += "<ul><li>Channels: " + meta.Channels + "</li>";
+		html += "<li>Fields: " + meta.HighestField + "</li></ul></p>";
+		html += "<p>Select the desired channel and click <i>Proceed</i> to continue"
+		html += "<div id=\"ChannelSelect\"></div></p>";
+		html += "<div id=\"ZipDownload\"></div></p>";
+		Form.open({
+			ID: id,
+			HTML: html,
+			Title: "Metadata",
+			Buttons: [
+				{Label: "Proceed", Click: function() {Helper.stitch({Meta: meta, Channel: channelSelect.Selected})}},
+				{Label: "Done", Click: function() {Form.close(id)}}
+			],
+			onInit: function() {channelSelect.init()}
+		});
+	}*/
+}

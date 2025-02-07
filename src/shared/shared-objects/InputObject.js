@@ -39,7 +39,7 @@ class InputObject {
 		else {
 			I = {Limit: this.Controls.Limit.Selected}
 		}
-		this.InputParser.parse(I); //Parse
+		if(I === undefined || I.NoParse !== true) {this.InputParser.parse(I)} //Parse
 		if(I && I.NoInit) {return}
 		this.InputParser.init(); //Init the LinkCtrl options for the parser
 	}

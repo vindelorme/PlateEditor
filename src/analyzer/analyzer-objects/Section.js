@@ -125,6 +125,9 @@ class Section {
 				save += Analyzer.exportJSON(content, "txt");
 				break;
 		}
+		if(I && I.TxtOnly) { //If only the txt is required (chaining with other contents), exit here by returning the txt
+			return save;
+		}
 		if(I && I.BlobOnly) { //If only the blob is required (chaining with other files), exit here by returning the blob
 			let blob = new Blob([save], {type : "text/plain;charset=utf-8"});
 			return blob;

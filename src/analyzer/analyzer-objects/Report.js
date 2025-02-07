@@ -388,17 +388,6 @@ class Report {
 			});
 		}, this);
 	}
-	/*
-	refresh(what, I) { //Refresh the report
-		switch(what) {
-			case "Rows": this.refreshRows(I); break;
-			case "Decimals": this.refreshDecimals(I); break;
-			case "CV": this.refreshCV(I.Show); break;
-			case "Log": this.refreshLog(I); break;
-			break;
-		}
-		return this;
-	}*/
 	refreshRows(I) { //Update the number of rows displayed per table
 		let height = "unset";
 		if(I.Collapse) {height = Analyzer.divHeight(I.Rows)}
@@ -413,74 +402,6 @@ class Report {
 		}
 		return this;
 	}
-	/*
-	refreshDecimals(I) { //Update the number of decimals displayed
-		let HTMLcollection = [];
-		if(I && I.LogOnly) {HTMLcollection = GetId("Output").getElementsByClassName("Value_PlaceHolder Header_Conc")} //Limit to the relevant items for log scale
-		else {HTMLcollection = GetId("Output").getElementsByClassName("Value_PlaceHolder")}
-		let l = HTMLcollection.length;
-		for(let i=0; i<l; i++) { //Update all the value placeholders
-			let elt = HTMLcollection[i];
-			if(elt.hasAttribute("value")) { //Locate elements with a value attribute
-				let val = Number(elt.getAttribute("value"));
-				if(I && I.Log) {
-					val = Math.log10(val);
-					if(I.Shift) {val += Number(elt.getAttribute("shift"))} //Shift to the higher unit
-					elt.setAttribute("logvalue", val);
-				}
-				if(val !== "" && (isNaN(val) == false)) { //If convertion to a number falls into NaN, it means the value is a text, so leave it as it is. Mind that 0 == "" is true so type equality required
-					elt.innerHTML = Analyzer.roundNb(val);
-				}
-			}
-		}
-		if(I && I.LogOnly) {return} //No need to adjust this for log scale
-		let tables = GetId("Output").getElementsByClassName("InnerTableRow");
-		let m = tables.length;
-		for(let i=0; i<m; i++) { //For each table
-			let t = tables[i];
-			let n = t.rows[0].cells.length; //Get the number of cells (these tables have only one row)
-			let maxLength = 2; //Minimum length
-			for(let j=0; j<n; j++) { //Travel each cell for this row
-				maxLength = Math.max(maxLength, t.rows[0].cells[j].innerText.length); //Using innerText solve the issue of the <span> for empty cells
-			}
-			t.style.minWidth = Analyzer.rowWidth(n, maxLength); //Update tables min-width
-		}
-		return this;
-	}
-	refreshCV(bool) { //Show or hide the computed CV values
-		let HTMLcollection = GetId("Output").getElementsByClassName("CV_Row");
-		let l = HTMLcollection.length;
-		let display = "none";
-		if(bool) {display = "table-row"}
-		for(let i=0; i<l; i++) {
-			HTMLcollection[i].style.display = display;
-		}
-		return this;
-	}
-	refreshLog(I) { //Refresh log scale options
-		let show = this.Options.LogScale.getValue();
-		let shift = this.Options.Shift.getValue();
-		let HTMLcollection = GetId("Output").querySelectorAll("span.Header_Conc"); //update the text for the headers
-		let l = HTMLcollection.length;
-		for(let i=0; i<l; i++) { //Loop the headers
-			let elt = HTMLcollection[i];
-			if(show) {elt.innerHTML = Analyzer.headerConcLog(elt.getAttribute("name"), shift)} //LogScale on
-			else {elt.innerHTML = elt.getAttribute("name")} //Off
-		}
-		this.refreshDecimals({LogOnly: true, Log: show, Shift: shift}); //Refresh the value display
-		//let HTMLcollection = GetId("Output").getElementsByClassName("Value_PlaceHolder Header_Conc");
-		//let l = HTMLcollection.length;
-		//for(let i=0; i<l; i++) {
-		//	let elt = HTMLcollection[i];
-		//	let val = Math.log10(Number(elt.getAttribute("value")));
-		//	if(shift) { //Shift on
-		//		val += Unit.shiftForUnit()
-		//	}
-		//	elt.setAttribute("logvalue", val);
-		//	if(show) {elt.innerHTML = Analyzer.roundNb(val)} //This option only affects display when log scale is turned on
-		//}
-	}
-	*/
 	exportAll() { //Export all data for available blocs and sections
 		let Z = new JSZip();
 		let id = "Form_Save";
@@ -494,7 +415,6 @@ class Report {
 		});
 		this.Blocs.forEach(function(bloc) {
 			let mainDir = Z.folder(bloc.File);
-			//let dir = Z.folder(Report.cleanFileName(bloc.Name));
 			let dir = mainDir.folder(Report.cleanFileName(bloc.Name));
 			bloc.Sections.forEach(function(section) {
 				let blob = section.export({BlobOnly: true});
@@ -505,7 +425,6 @@ class Report {
 			let target = GetId(outputID); //Access the element only at the end
 			if(target) {
 				let url = URL.createObjectURL(b);
-				//target.innerHTML = "<p>Click <a href=\"" + url + "\" download=\"" + fileName + "\">here</a> to download the generated zip file</p>";
 				target.innerHTML = "<p>Click on the link below to download and save your file:</p><p style=\"text-align: center;\"><a href=\"" + url + "\" download=\"" + fileName + "\">" + fileName + "</a></p>"
 				Form.replaceButtons(id, [{Label: "Close", Click: function() {URL.revokeObjectURL(url); Form.close(id)}}]); //Revoke the URL has it is no longer useful
 			}

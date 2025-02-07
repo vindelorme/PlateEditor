@@ -239,7 +239,7 @@ class Editor {
 		else { //No plate was defined, create it
 			this.Plate = new Plate(this.Anchors.Main.Plate, r, c);
 			this.Plate.init();
-			this.Menu.closeAll().jumpTo(1);
+			this.Menu.jumpTo(1);
 		}
 		return this;
 	}
@@ -337,7 +337,7 @@ class Editor {
 			this.Tables.Areas.update(); //Update the table to reflect any changes in the ranges
 		}
 		this.Plate.update(); //Update to display the concentrations and update the range info
-		this.Menu.closeAll().jumpTo(1);
+		this.Menu.jumpTo(1);
 		this.Console.log({Message: "Layout successfully loaded", Gravity: "Success", Reset: true});
 		return this;
 	}

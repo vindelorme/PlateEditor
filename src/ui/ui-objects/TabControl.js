@@ -10,6 +10,9 @@ class TabControl {
 		this.AutoInit = (I.AutoInit || false); //Will fall as false unless explicitely defined as true
 		this.Multiple = (I.Multiple || false); //This allows opening of multiple panels. Only available for Menu Layout. Default is only one panel open at a time
 		this.Disabled = (I.Disabled || false); //Whether the navigation should be disabled for this tab
+		this.AnimDuration = (I.AnimDuration || 300);
+		this.AutoScroll = true; //Whether the browser should scroll to display the content of the tab after opening animation
+		if(I.AutoScroll === false) {this.AutoScroll = false}
 		this.Stack = I.Stack; //Whether tab contents should stack on top of each other, instead of being left-floating
 		this.Layout = (I.Layout || "Horizontal"); //Layout of the tab. Horizontal is the default, were headers and contents are stacked horizontally one after another. Menu allows an 'accordion menu'-like layout, whith a header and the content directly following, altogether stacked vertically. Vertical allows the headers to be stacked in a column, followed by the contents
 		this.AfterDelete = (I.AfterDelete || function(i) {}); //Additional actions to be taken after deletion of a tab. The function receives the index of the deleted tab as argument
@@ -52,14 +55,14 @@ class TabControl {
 	}
 	active() { //Returns the index of the active tab
 		if(this.Multiple) { //In this case, returns an array of active elements
-			var array = [];
+			let array = [];
 			this.Tabs.forEach(function(t, i) {
 				if(t.Active) {array.push(i)}
 			});
 			return array;
 		}
 		else { //Only one active tab at a time, returns the index of the winner
-			var l = this.Tabs.length;
+			let l = this.Tabs.length;
 			for(let i=0;i<l;i++) { //Loop the tabs
 				if(this.Tabs[i].Active) {return i}
 			}
@@ -118,6 +121,12 @@ class TabControl {
 		source.forEach(function(t, i) { //For each tab, bind the events
 			let header = GetId(t.Anchors.Header);
 			header.addEventListener("click", this.click.bind(this)); //Need to bind the object otherwise this refers to the header in the callback
+			let content = GetId(t.Anchors.Content);
+			t.Height = content.clientHeight + "px"; //Log the height of this content
+			t.Width = content.clientWidth + "px"; //Log also the width of this content
+			if(!(t.Active)) { //hide it if necessary
+				content.style.display = "none";
+			} 
 		}, this);
 		return this;
 	}
@@ -125,6 +134,9 @@ class TabControl {
 		let t = e.target;
 		let key = Number(t.getAttribute("tabKey")); //The unique Key of the TabPanel
 		let index = this.getTabIndex(key);
+		let tab = this.Tabs[index];
+		if(tab.Animate) {return this} //No spam allowed!
+		if(tab.Disabled) {return this} //Disabled tab is not interactable
 		if(t.hasAttribute("tabaction")) { //Click was on a control
 			switch(t.getAttribute("tabAction")) {
 				case "Setting": break;
@@ -135,25 +147,18 @@ class TabControl {
 			}
 		}
 		else { //Click was on the tab
-			if(t.classList.contains("LinkCtrl_Active")) { //The tab is active
-				//if(this.Multiple && this.Layout == "Menu") {this.Tabs[index].set("Resting")} //In this case, it is fine to hide any items
-				if(this.Multiple) {this.Tabs[index].set("Resting")} //In this case, it is fine to hide any items
-				else {this.Tabs[index].fold()} //Fold or unfold the content, one tab should always be active
-			} 
-			else {
-				if(t.classList.contains("LinkCtrl_Disabled")) {return} //Nothing to do in case the tab is disabled
-				this.jumpTo(index); //Default action
-			}
+			if(this.Multiple) {tab.fold()} //No need to worry in this case
+			else {this.jumpTo(index)}
 		}
 		return this;
 	}
 	jumpTo(index) { //Jump to the tab with the provided index
-		this.Tabs[index].set("Active");
+		if(this.Tabs[index].Active) {return this} //Already open, nothing else to do
 		if(!this.Multiple) { //Only one tab active, need to deactivate previously activated tab
-			this.Tabs.forEach(function(t, i) { //Loop the tabs
-				if(t.Active && i != index) {t.set("Resting")} //This tab needs to be deactivated
-			});
+			let a = this.active();
+			if (a !== undefined) {this.Tabs[this.active()].set("Resting", {NoAnimation: true})}
 		}
+		this.Tabs[index].set("Active");
 		return this;
 	}
 	setOpen(array) { //Set open the tabs with their index in the array provided, close the others. Only for tabs with Multiple enabled!
@@ -166,11 +171,17 @@ class TabControl {
 		return this;
 	}
 	closeAll() { //Close all the tabs
-		this.Tabs.forEach(function(t) {t.set("Resting")});
+		this.Tabs.forEach(function(t) {
+			t.Active = false;
+			t.updateState();
+		});
 		return this;
 	}
 	openAll() { //Open all the tabs
-		this.Tabs.forEach(function(t) {t.set("Active")});
+		this.Tabs.forEach(function(t) {
+			t.Active = true;
+			t.updateState();
+		});
 		return this;
 	}
 	addTabs(array) { //Append new tabs provided as an array

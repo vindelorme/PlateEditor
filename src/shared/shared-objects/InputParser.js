@@ -113,7 +113,9 @@ class InputParser {
 	parse(I) { //Parse the input using provided options
 		let T = Form_Import.Controls.Table;
 		if(this.Error) {
-			this.previewRow([], undefined, {Error: true});
+			if(I && I.NoPreview !== true) {
+				this.previewRow([], undefined, {Error: true});
+			}
 			if(I && I.Input) {I.Input.Status = "Error"; T.update()}
 			return this;
 		}
@@ -152,7 +154,7 @@ class InputParser {
 		}.bind(this), {ApplyToHeader: true}); //We need to count the header row as a selected row in case the file contains the header
 	}
 	chunk(f, I) { //Chunk a piece of the input and apply the provided function on each chunk
-		
+		//Similar to bulk but there should be a limit in the number of lines accumulated
 	}
 	bulk(f) { //Apply the supplied function to the entire bulk of data, once the streaming is complete. This is sure to crash for big files
 		let out = [];

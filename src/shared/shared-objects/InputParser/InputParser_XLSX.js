@@ -21,6 +21,10 @@ class InputParser_XLSX extends InputParser {
 	//Static methods
 	static getSheetNames(zip, DOMParser) { //Parse the input to get the number of sheets and their names
 		return new Promise(function(resolve, reject) {
+			if(zip.file("xl/workbook.xml") === null) {
+				let e = new Error("Cannot access the \"xl/workbook.xml\" directory! This file is not a standard XLSX file.");
+				reject(e);
+			}
 			zip.file("xl/workbook.xml").async("string").then(function(str) {
 				let xml = DOMParser.parseFromString(str, "application/xml").getElementsByTagName("sheet");
 				let l = xml.length;
@@ -151,13 +155,18 @@ class InputParser_XLSX extends InputParser {
 					this.FirstParsed = true;
 					this.parse(I);
 				}.bind(this), I);
+			}.bind(this)).catch(function(e) { //Errors occuring in getMeta or during parsing are caught here
+				this.fail(e, I);
 			}.bind(this));
-		}.bind(this), function(e) { //What to do on failure of archive reading
-			this.Error = true;
-			this.ErrorDetails = e;
-			this.parse(I); //We call the parse again so that the error message and status are reflected in the preview box and the input table
-			if(I && I.Error) {I.Error(e)}
+		}.bind(this), function(e) { //Error during loadAsync are caught here
+			this.fail(e, I);
 		}.bind(this));
+	}
+	fail(e, I) { //What to do on failure of archive reading
+		this.Error = true;
+		this.ErrorDetails = e;
+		this.parse(I); //We call the parse again so that the error message and status are reflected in the preview box and the input table
+		if(I && I.Error) {I.Error(e)} //Execute the error callback if provided
 	}
 	stream(f, complete, I) { //Stream the input and send the row to the function provided as argument
 		let w = InputParser_XLSX.initWorker(); //Initialize the webworker

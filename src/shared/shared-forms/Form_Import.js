@@ -27,7 +27,10 @@ class Form_Import {
 	static init(I) { //Initialize internal (private) properties if not set
 		if(this.Init) {return}
 		else {
-			var id = "Form_Import";
+			let id = "Form_Import_";
+			let index = 0;
+			if(Form.Dialogs !== undefined) {index = Form.Dialogs} //Increment the index to the number of open dialogs, to guarantee unicity
+			id = id + index + "_";
 			this.ID = id;
 			this.Anchors = {
 				Input: id + "_Input",
@@ -44,6 +47,8 @@ class Form_Import {
 				WaitMaskCurrent: id + "_WaitMaskCurrent",
 				WaitMaskTotal: id + "_WaitMaskTotal",
 				WaitMaskList: id + "_WaitMaskList",
+				ApplyToAll: id + "_ApplyToAll",
+				Buttons: id + "Form_Footer",
 			}
 			this.Controls = {
 				File: LinkCtrl.new("File", {ID: this.Anchors.Input, Default: "", Accept: ".txt,.csv,.xls,.xlsx"}),
@@ -63,7 +68,11 @@ class Form_Import {
 					{Label: "Done", Icon: {Type: "Ok", Space: true, Color: "Green"}, Click: function() {this.done()}.bind(this)},
 					{Label: "Cancel", Icon: {Type: "Cancel", Space: true, Color: "Red"}, Click: function() {this.cancel()}.bind(this)}
 				],
+				ApplyAll: LinkCtrl.new ("Button", {ID: this.Anchors.ApplyToAll, Label: "Apply this config to all", Click: function() {
+					this.applyConfigToAll();
+				}.bind(this), Title: "Apply the parsing configuration of this selected file to all the other files"}),
 			}
+			this.ButtonBar = LinkCtrl.new("ButtonBar", {ID: this.Anchors.Buttons, Buttons: this.Buttons.Step2, Spacing: true});
 			this.Step = 1; //Initialize the form at its first step
 			this.Init = true;
 		}
@@ -72,6 +81,7 @@ class Form_Import {
 	static bindEvents() { //Initialize the LinkCtrl inputs and dynamic behaviour to the elements of the form
 		var b = LinkCtrl.button({Label: "Add", Title: "Add these inputs to the list of selected inputs", Click: function() {this.addInput()}.bind(this)});
 		GetId(this.Anchors.InputSelection).append(b); //Button to add the input to the table
+		this.Buttons.ApplyAll.init(); //Button to apply the same parsing config to all inputs
 		this.Controls.Table.init();
 		this.Controls.InputType.init().change(); //Trigger a change on init to append the correct html attached to the selected input
 	}
@@ -149,55 +159,41 @@ class Form_Import {
 		Form.replaceButtons(this.ID, [{Label: "Cancel", Icon: {Type: "Cancel", Space: true, Color: "Red"}, Click: function() {this.close()}.bind(this)}]); //Remove next button
 		this.parsingStart(T.Array);
 		let input = T.Selected[0];
-//*****************************************
-//No input selected: force selection of the first element.
-//This can happen when going back to delete an item, then clicking next without selection
-		if(input === undefined) {
+		if(input === undefined) { //No input selected: force selection of the first element. This can happen when going back to delete an item, then clicking next without selection
 			T.setValue([0]);
 			input = T.Selected[0];
 		}
-//*****************************************
 		let selected = T.SelectedIndices[0];
 		let promises = [];
-//*****************************************
-//For Each input, trigger a change to create a parser object and parse the file.
-//Parsing is necessary to ensure something is done,
-//even if this item is not clicked later by the user to adjust the parsing configuration.
-//Only the selected item needs to build its preview
-		T.Array.forEach(function(a, i) { //Start parsing of all inputs as asynchronous tasks (promises)
+		T.Array.forEach(function(a, i) { //For Each input, trigger a change to create a parser object and parse the file.
 			let noPrev = true;
 			if(i == selected) {noPrev = false} //Only the selected input will need to prepare a preview
-			promises.push(
-				new Promise(function(resolve) {
-					a.Controls.Parser.change(undefined, {
-						NoInit: true, NoPreview: noPrev,
-						Step: function(row, n, parser) {
-							let html = "";
-							if(parser.FirstParsed == false) {html = "(Pre-parsing) - "}
-							if(5000 * Math.round(n / 5000) - n == 0) { //Only once every 5000 rows to save FPS
-								GetId(this.Anchors.WaitMaskList).children[i].children[1].innerHTML = html + n;
-							}
-						}.bind(this),
-						Complete: function(n) {
-							this.parsingUp(i, n); //when the parsing is completed, update the file counter and resolve
-							a.Status = undefined;
-							resolve();
-						}.bind(this),
-						Error: function(e) {
-							this.parsingError(i, e);
-							a.Status = "Error";
-							resolve();
-						}.bind(this), //Catch the error here
-					});
-				}.bind(this))
+			promises.push( //Start parsing of all inputs as asynchronous tasks (promises)
+				this.testParse(a, {
+					Index: i,
+					NoPreview: noPrev,
+					NoInit: true,
+					Step: function(row, n, parser, inputIndex) {
+						let html = "";
+						if(parser.FirstParsed == false) {html = "(Pre-parsing) - "}
+						if(5000 * Math.round(n / 5000) - n == 0) { //Only once every 5000 rows to save FPS
+							GetId(this.Anchors.WaitMaskList).children[inputIndex].children[1].innerHTML = html + n;
+						}
+					}.bind(this),
+					Complete: function(n, inputIndex) {
+						this.parsingUp(inputIndex, n); 
+					}.bind(this),
+					Error: function(e, inputIndex) {
+						this.parsingError(inputIndex, e);
+					}.bind(this),
+				}) //No ; here, you are within a push idiot!
 			);
 		}, this);
-//*****************************************
 		Promise.all(promises).then(function() { //After all files have been parsed, swith to next tab
 			this.parsingDone();
 			this.showParsingControls(input);
 			T.update(); //Update the table to reflect any file in error
-			Form.replaceButtons(this.ID, this.Buttons.Step2); //Buttons for parsing
+			this.ButtonBar.init(); //Replace the button with step 2 buttons
 		}.bind(this));
 	}
 	static back() { //A step backward
@@ -212,9 +208,37 @@ class Form_Import {
 		if(bool) {GetId(this.Anchors.PreviewBox).style.display = "block"}
 		else {GetId(this.Anchors.PreviewBox).style.display = "none"}
 	}
+	static testParse(input, I) { //A promise that will complete with the results of the parsing for the given input
+		return new Promise(function(resolve) {
+			input.Controls.Parser.change(undefined, {
+				NoInit: I.NoInit,
+				NoPreview: I.NoPreview,
+				Step: function(row, n, parser) { //Function running on each step
+					if(I.Step) {
+						I.Step(row, n, parser, I.Index);
+					}
+				}.bind(this),
+				Complete: function(n) { //when the parsing is completed, update the file counter and resolve
+					if(I.Complete) {
+						I.Complete(n, I.Index);
+					}
+					input.Status = undefined;
+					resolve();
+				}.bind(this),
+				Error: function(e) { //Catch the error here
+					if(I.Error) {
+						I.Error(e, I.Index);
+					}
+					input.Status = "Error";
+					resolve();
+				}.bind(this), 
+			});
+		}.bind(this));
+	}
 	static parsingStart(array) { //Display a wait message for the array of input
 		this.ParsedInputs = 0;
 		let n = array.length;
+		GetId(this.Anchors.WaitMaskCurrent).innerHTML = 0;
 		GetId(this.Anchors.WaitMaskTotal).innerHTML = n;
 		let list = "";
 		for(let i=0;i<n;i++) {
@@ -284,6 +308,52 @@ class Form_Import {
 		}
 		else {this.close(data)} //Close straight
 	}
+	static applyConfigToAll() {
+		let T = this.Controls.Table;
+		let input = T.Selected[0];
+		if(input === undefined) {return} //Nothing to do if no input selected, but in practice this should not happen
+		let m = T.SelectedIndices[0];
+		let parserType = input.Controls.Parser.getValue(); //Index of the Parser in the dropdown list, for the selected input
+		let options = Object.values(input.InputParser.Options); //Options for the parser of the selected input
+		let array = T.Array.toSpliced(m, 1); //toSpliced do not change the initial array, remove 1 element starting at the selected index
+		this.parsingStart(array); //Block the form while files are parsing
+		this.ButtonBar.disable() ;
+		let promises = [];
+		array.forEach(function(a, i) {
+			a.Controls.Parser.setValue(parserType).change(undefined, {NoParse: true}); //Start by silently applying the same parser as the target, without parsing
+			Object.values(a.InputParser.Options).forEach(function(o, j) { //Copy the values for the options
+				o.setValue(options[j].getValue());
+			});
+			promises.push(
+				new Promise(function(resolve, reject) {
+					a.InputParser.parse({ //Parse the file using the new parser and configuration
+						NoPreview: true, //Parse without preview
+						Step: function(row, n, parser) {
+							if(5000 * Math.round(n / 5000) - n == 0) { //Only once every 5000 rows to save FPS
+								GetId(this.Anchors.WaitMaskList).children[i].children[1].innerHTML = n;
+							}
+						}.bind(this),
+						Complete: function(n) { //Update status of the input on complete or on error
+							this.parsingUp(i, n); //Update file parsing status
+							a.Status = undefined;
+							T.update();
+							resolve();
+						}.bind(this),
+						Error: function(e) { //Update error status
+							this.parsingError(i, e);
+							a.Status = "Error";
+							T.update();
+							resolve(); //Error is handled internally, no need to reject here
+						}.bind(this),
+					})
+				}.bind(this)) //No ; here, you are within a push idiot!
+			);
+		}, this);
+		Promise.all(promises).then(function() { //After all files have been parsed, release the form
+			this.parsingDone();
+			this.ButtonBar.enable();
+		}.bind(this));
+	}
 	static reset() { //Reset prior to closure
 		this.Controls.Table.empty(); //Empty the input list
 		this.Step = 1; //Move back to step 1
@@ -327,6 +397,11 @@ class Form_Import {
 						html += "<div id=\"" + this.Anchors.Preview + "\"></div>"; //Control checkbox
 						html += "<div id=\"" + this.Anchors.PreviewBox + "\" class=\"Form_Import_Preview\"></div>"; //Preview 
 					html += "</fieldset>";
+					
+					html += "<div style=\"clear: both\" id=\"" + this.Anchors.ApplyToAll + "\">";
+					//html += {Label: "Next", Click: function() {this.next()}.bind(this)}
+					html += "</div>"
+					
 				html += "</fieldset>";
 			html += "</div>";
 		html += "</div>";

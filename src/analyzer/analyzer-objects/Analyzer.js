@@ -118,7 +118,7 @@ class Analyzer {
 	}
 	static cellForValue(v, F, I) { //prepare a cell to hold a numeric or textual value
 		if(F.Format == "txt") { //This case is pretty simple
-			if(v === "" || v === undefined) {return this.noData("txt")} //Mind the type equality, because 0 == "" evaluates to true
+			if(v === "" || v === undefined || v === null) {return this.noData("txt")} //Mind the type equality, because 0 == "" evaluates to true
 			let val = v;
 			if(v.Value !== undefined) {val = v.Value}
 			if(F.Displayed) {return this.roundNb(val)}
@@ -128,11 +128,11 @@ class Analyzer {
 		let inner = v;
 		let value = "";
 		let title = "";
-		if(v === "" || v === undefined) {inner = this.noData(F.Format)} //Mind the type equality, because 0 == "" evaluates to true
+		if(v === "" || v === undefined || v === null) {inner = this.noData(F.Format)} //Mind the type equality, because 0 == "" evaluates to true
 		if(I) { //Look the options
 			if(I.Class) {c += I.Class + " "}
 			if(I.Border && I.Index > 0) {c += "BorderLeft "}
-			if(I.Type == "#" && v !== "" && v !== undefined) { //Number should use the value placeHolder
+			if(I.Type == "#" && v !== "" && v !== undefined && v !== null) { //Number should use the value placeHolder
 				inner = this.roundNb(v);
 				c += "Value_PlaceHolder";
 				value = " value=\"" + v + "\"";
@@ -140,7 +140,7 @@ class Analyzer {
 			if(I.Title) {title = " title=\"" + I.Title + "\""}
 			if(I.ReturnLength) {
 				let html = "<td" + c + "\"" + value + title + ">" + inner + "</td>";
-				if(v === "" || v === undefined) {return {HTML: html, Length: 2}}
+				if(v === "" || v === undefined || v === null) {return {HTML: html, Length: 2}}
 				else {
 					if(inner.length === undefined) { //In case the value is a number that we want to treat as text
 						return {HTML: html, Length: inner.toString().length}
@@ -199,6 +199,7 @@ class Analyzer {
 		}
 	}
 	static arrayToColumn_Txt(i, json, F, headers) { //Produce a column output for the subgroup object i, in a txt format
+		console.log(i, json, F, headers);
 		let out = "";
 		let MaxRow = json.Groups.reduce(function(acc, val) {return Math.max(acc, val.DataPoints[i].length)}, 0); //Maximum number of row to expect
 		let gap = this.blankCell("txt"); //Gap to append to each row to keep the alignment
@@ -282,7 +283,7 @@ class Analyzer {
 			Log: log,
 			Format: format,
 			CV: this.Report.Options.CV.getValue(),
-			Shift: this.Report.Options.Shift.getValue,
+			Shift: this.Report.Options.Shift.getValue(),
 			Aggregation: this.Report.UI.DataView.Selected,
 			ColumnIndex: 0, //For synchronized scrolling; will be incremented on the fly as columns are added
 		}; 
