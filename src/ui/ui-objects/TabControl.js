@@ -122,8 +122,10 @@ class TabControl {
 			let header = GetId(t.Anchors.Header);
 			header.addEventListener("click", this.click.bind(this)); //Need to bind the object otherwise this refers to the header in the callback
 			let content = GetId(t.Anchors.Content);
-			t.Height = content.clientHeight + "px"; //Log the height of this content
-			t.Width = content.clientWidth + "px"; //Log also the width of this content
+			//t.Height = content.clientHeight + "px"; //Log the height of this content
+			//t.Width = content.clientWidth + "px"; //Log also the width of this content
+			t.Height = content.clientHeight; //Log the height of this content
+			t.Width = content.clientWidth; //Log also the width of this content
 			if(!(t.Active)) { //hide it if necessary
 				content.style.display = "none";
 			} 

@@ -158,12 +158,14 @@ class TabPanel {
 			this.Animate = true; //Prevent further interactions for this panel during the animation
 			if(this.Active) { //Make the content visible
 				content.style.display = "block";
+				this.Height = Math.max(this.Height, content.clientHeight); //Log the height of this content
+				this.Width = Math.max(this.Width, content.clientWidth); //Log also the width of this content
 				let anim = content.animate(this.getAnimTransform("open"), {duration: time, iterations: 1, fill: "forwards"});
-				anim.onfinish = function() { //If the content of the tab has been changed programmatically, the height/width must be updated to accomodate the new contents
+				anim.onfinish = function() {
 					let ResizeAnim = content.animate(this.getAnimTransform("resize"), {duration: 1, iterations: 1, fill: "forwards"});
 					ResizeAnim.onfinish = function() { //Update properties for smooth opening next time
-						this.Height = content.clientHeight + "px"; //log the current height and width
-						this.Width = content.clientWidth + "px";
+						this.Height = Math.max(this.Height, content.clientHeight); //Log the height of this content
+						this.Width = Math.max(this.Width, content.clientWidth); //Log also the width of this content
 						if(this.Parent.AutoScroll) {
 							content.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
 						}
@@ -171,9 +173,9 @@ class TabPanel {
 					}.bind(this);
 				}.bind(this);
 			}
-			else { ////Make the content hidden
-				this.Height = content.clientHeight + "px"; //log the current height and width
-				this.Width = content.clientWidth + "px";
+			else { //Make the content hidden
+				this.Height = Math.max(this.Height, content.clientHeight); //Log the height of this content
+				this.Width = Math.max(this.Width, content.clientWidth); //Log also the width of this content
 				let anim = content.animate(this.getAnimTransform("close"), {duration: time, iterations: 1, fill: "forwards"});
 				anim.onfinish = function() {
 					content.style.display = "none";
@@ -183,32 +185,34 @@ class TabPanel {
 		}
 	}
 	getAnimTransform(state) { //Return the animation transform to use while animating this panel
+		let h = this.Height + "px";
+		let w = this.Width + "px";
 		switch(state) {
 			case "open":
-				let from = {transform: "translateY(-" + this.Height + ")", height: 0, opacity: 0};
-				let to = {transform: "translateY(0)", height: this.Height, opacity: 1};
+				let from = {transform: "translateY(-" + h + ")", height: 0, opacity: 0};
+				let to = {transform: "translateY(0)", height: h, opacity: 1};
 				if(this.Parent.Layout == "Horizontal" && this.Parent.Multiple == true) { //Specific case
-					from = {transform: "translateY(-" + this.Height + ")", transform: "translateX(-" + this.Width + ")", height: 0, width: 0, opacity: 0};
-					to = {transform: "translateY(0)", transform: "translateX(0)", height: this.Height, width: this.Width, opacity: 1};
+					from = {transform: "translateY(-" + h + ")", transform: "translateX(-" + w + ")", height: 0, width: 0, opacity: 0};
+					to = {transform: "translateY(0)", transform: "translateX(0)", height: h, width: w, opacity: 1};
 				}
 				return [from, to];
 			case "close": 
 				if(this.Parent.Layout == "Horizontal" && this.Parent.Multiple == true) { //Specific case
 					return [
-						{transform: "translateY(0)", transform: "translateX(0)", height: this.Height, width: this.Width, opacity: 1},
-						{transform: "translateY(-" + this.Height + ")", transform: "translateX(-" + this.Width + ")", height: 0, width: 0, opacity: 0}
+						{transform: "translateY(0)", transform: "translateX(0)", height: h, width: w, opacity: 1},
+						{transform: "translateY(-" + h + ")", transform: "translateX(-" + w + ")", height: 0, width: 0, opacity: 0}
 					];
 				}
 				return [
-					{transform: "translateY(0)", height: this.Height, opacity: 1},
-					{transform: "translateY(-" + this.Height + ")", height: 0, opacity: 0}
+					{transform: "translateY(0)", height: h, opacity: 1},
+					{transform: "translateY(-" + h + ")", height: 0, opacity: 0}
 				];
 			case "resize":
 				if(this.Parent.Layout == "Horizontal" && this.Parent.Multiple == true) { //Specific case
-					return [{height: this.Height, width: this.Width}, {height: "auto", width: "auto"}];
+					return [{height: h, width: w}, {height: "auto", width: "auto"}];
 				}
 				else {
-					return [{height: this.Height}, {height: "auto"}];
+					return [{height: h}, {height: "auto"}];
 				}
 			default: return [];
 		}

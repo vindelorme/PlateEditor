@@ -22,6 +22,7 @@ class Editor {
 				Conc: menuRoot + "Concentration",
 				DRC: menuRoot + "Conc_DRC",
 				Analysis: menuRoot + "Analysis",
+				Tools: menuRoot + "Tools",
 			},
 			Main: {
 				Root: mainRoot,
@@ -52,7 +53,7 @@ class Editor {
 			Tabs: [
 				{Label: "Plate", Active: true, Content: {
 					Type: "HTML",
-					Value: "<fieldset><div id=\"" + this.Anchors.Menu.Plate + "\"></div></fieldset><fieldset id=\"" + this.Anchors.Menu.Layout + "\"><legend>Options</legend></fieldset>", //<legend>Format</legend>
+					Value: "<fieldset><legend>Dimensions</legend><div id=\"" + this.Anchors.Menu.Plate + "\"></div></fieldset><fieldset id=\"" + this.Anchors.Menu.Layout + "\"><legend>Options</legend></fieldset>", //<legend>Format</legend>
 				}},
 				{Label: "Areas", Content: {
 					Type: "HTML",
@@ -61,6 +62,7 @@ class Editor {
 				{Label: "Concentration", Content: {Type: "HTML", Value: "<fieldset id=\"" + this.Anchors.Menu.Conc + "\"></fieldset><fieldset id=\"" + this.Anchors.Menu.DRC + "\"><legend>Dose-response</legend></fieldset>"} }, //<legend>Management</legend>
 				{Label: "Results", Content: {Type: "HTML", Value: "<fieldset></fieldset><fieldset id=\"" + this.Anchors.Menu.Results + "\"><legend>Results available</legend></fieldset>"} }, //<legend>Controls</legend> style=\"max-height: 500px; overflow: auto\"
 				{Label: "Analysis", Content: {Type: "HTML", Value: "<div id=\"" + this.Anchors.Menu.Analysis + "\"></div>"} },
+				{Label: "Tools", Content: {Type: "HTML", Value: "<div id=\"" + this.Anchors.Menu.Tools + "\"></div>"} },
 			],
 		});
 		this.Main = new TabControl({
@@ -120,10 +122,10 @@ class Editor {
 			Object.values(c).forEach(function(l) {l.init()});
 		});
 		GetId(this.Anchors.Menu.Plate).prepend(LinkCtrl.buttonBar([
-			{Label: "96 wells", Title: "Create the layout for a 96-well plate (8 Rows × 12 Columns)", Click: function() {this.newPlate(8, 12)}.bind(this)},
-			{Label: "384 wells", Title: "Create the layout for a 384-well plate (16 Rows × 24 Columns)", Click: function() {this.newPlate(16, 24)}.bind(this)},
-			{Label: "1536 wells", Title: "Create the layout for a 1536-well plate (32 Rows × 48 Columns)", Click: function() {this.newPlate(32, 48)}.bind(this)},
-			{Label: "Custom", Title: "Create the layout for a plate with the number of Rows and Columns as specified", Click: function() {
+			{Label: "96-w", Title: "Create a layout for a standard 96-well plate (8 Rows × 12 Columns)", Click: function() {this.newPlate(8, 12)}.bind(this)},
+			{Label: "384-w", Title: "Create a layout for a standard 384-well plate (16 Rows × 24 Columns)", Click: function() {this.newPlate(16, 24)}.bind(this)},
+			{Label: "1536-w", Title: "Create a layout for a standard 1536-well plate (32 Rows × 48 Columns)", Click: function() {this.newPlate(32, 48)}.bind(this)},
+			{Label: "Custom", Title: "Create a layout for a plate with the number of Rows and Columns as specified", Click: function() {
 				var r = this.Controls.Plate.Rows.getValue();
 				var c = this.Controls.Plate.Cols.getValue();
 				this.newPlate(r, c);
@@ -171,6 +173,10 @@ class Editor {
 		GetId(this.Anchors.Menu.Analysis).prepend(LinkCtrl.buttonBar([
 			{Label: "Column Analysis", Title: "Compute statistics for the combinations of all areas and concentrations defined in the layout, organized as individual columns", Click: function() {this.report("aggregate")}.bind(this)},
 			{Label: "Grouped Analysis", Title: "Compute statistics for combinations of areas, ranges and concentrations defined in the layout, organized as one or two-entry tables", Click: function() {this.report("grouped")}.bind(this)},
+		]));
+		GetId(this.Anchors.Menu.Tools).prepend(LinkCtrl.buttonBar([
+			{Label: "Well generator", Title: "Generates a list of well names, in column, using the specified configuration", Click: function() {this.wellGen()}.bind(this)},
+			{Label: "Matrix to Column", Title: "Converts a matrix (2D array of values) into a single column of data", Click: function() {this.toColumn()}.bind(this)},
 		]));
 		return this;
 	}
@@ -623,5 +629,67 @@ class Editor {
 		if(areas.Count == 0) {this.Console.log({Message: "No areas defined in the current layout", Gravity: "Error"}); return this}
 		Reporter.hits(controls, areas, Plate.flatten(this.Plate));
 		return this;
+	}
+//*************************
+// TOOLS-RELATED METHODS
+//*************************
+	static wellGen() {
+		let id = "Form_WellGen";
+		let alphabet = [];
+		for(let i=0; i<32; i++) {alphabet.push(Well.alphabet(i))}
+		let num = [];
+		for(let i=1; i<=48; i++) {num.push(i)}
+		let controls = {
+			Priority: LinkCtrl.new("Radio", {ID: "Radio", Default: 0, Label: "Fix first", List: ["Columns (A1, B1, C1...)", "Rows (A1, A2, A3...)"]}),
+			StartCol: LinkCtrl.new("Select", {ID: "Cols", Default: 0, Label: "Start", List: num}),
+			EndCol: LinkCtrl.new("Select", {ID: "Cols", Default: 11, Label: "End", List: num, Chain: {Index: 1}}),
+			StartRow: LinkCtrl.new("Select", {ID: "Rows", Default: 0, Label: "Start", List: alphabet}),
+			EndRow: LinkCtrl.new("Select", {ID: "Rows", Default: 7, Label: "End", List: alphabet, Chain: {Index: 1}}),
+			Output: LinkCtrl.new("TextArea", {ID: "Output", Default: ""}),
+		}
+		let html = "";
+		html += "<p>Generates a list of wells based on the configuration options below:</p>";
+		html += "<fieldset><legend>Options</legend>"
+		html += "<div><span id=\"Radio\"></span></div>";
+		html += "<div>Columns: <span id=\"Cols\" style=\"margin-right:20px\"></span>";
+		html += "Rows: <span id=\"Rows\"></span></div></fieldset>";
+		html += "<div id=\"Output\" style=\"margin-top: 10px;\"></div>";
+		Form.open({
+			ID: id,
+			HTML: html,
+			Title: "Well Generator",
+			Size: 600,
+			Buttons: [
+				{Label: "Generate", Icon: {Type: "Ok", Color: "Green"}, Click: function() {Well.generateWellList(controls, alphabet, num)} },
+				{Label: "Close", Click: function() {Form.close(id)}}
+			],
+			onInit: function() {
+				Object.values(controls).forEach(function(c) {c.init()});
+			}
+		});
+	}
+	static toColumn() {
+		let id = "Form_toColumn";
+		let html = "";
+		let controls = {
+			DataInput: LinkCtrl.new("TextArea", {ID: "Input", Default: "Paste your data here"}),
+			Output: LinkCtrl.new("TextArea", {ID: "Output", Default: "Converted data will be shown here"}),
+		}
+		html += "<p>Converts plate data given as a matrix (2D array) into a single column. All headers should be excluded! Paste only the tab-separated data below:</p>";
+		html += "<div id=\"Input\" style=\"float:left\"></div>";
+		html += "<div id=\"Output\" style=\"float:left; margin-left: 20px;\"></div>";
+		Form.open({
+			ID: id,
+			HTML: html,
+			Title: "Matrix To Column",
+			Size: 600,
+			Buttons: [
+				{Label: "Convert", Icon: {Type: "Ok", Color: "Green"}, Click: function() {Result.matrixToCol(controls)} },
+				{Label: "Close", Click: function() {Form.close(id)}}
+			],
+			onInit: function() {
+				Object.values(controls).forEach(function(c) {c.init()});
+			}
+		});
 	}
 }

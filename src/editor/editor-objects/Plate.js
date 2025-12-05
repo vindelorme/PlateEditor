@@ -339,7 +339,7 @@ class Plate {
 				let y = (j + 1) * space;
 				ctx.strokeRect(x, y, size, size);
 				if(i == 0) { //Row header
-					ctx.fillText(Well.alphabet(j), space / 2, y + size / 2);
+					ctx.fillText(Well.alphabet(j), (size / 2) + (margin / 4), y + size / 2);
 				}
 			}
 			ctx.fillText(i+1, x + size / 2, space / 2); //Column header

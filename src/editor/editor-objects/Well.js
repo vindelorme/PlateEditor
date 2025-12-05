@@ -22,7 +22,7 @@ class Well {
 	}
 	//Static Methods
 	static alphabet(c) { //Return a string matching the column index given
-		var A = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+		let A = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
 		if(c < 26) {return A[c]}
 		else {return "A" + A[c-26]} //This is enough to cover all the 48 rows allowed
 	}
@@ -65,6 +65,35 @@ class Well {
 			else {data[0] = a.Name} //The rest is straightforward
 		}
 		return data;
+	}
+	static generateWellList(controls, alphabet, num) { //Generate a list of well using the configuration passed by the controls. Returns the string in the Output control. Also requires the alphabet and num lists
+		let way = controls.Priority.getValue();
+		let A = alphabet.filter(function(a, i) {return (i >= controls.StartRow.getValue() && i <= controls.EndRow.getValue())});
+		let N = num.filter(function(n, i) {return (i >= controls.StartCol.getValue() && i <= controls.EndCol.getValue())});
+		let out = "";
+		if(A.length == 0 || N. length == 0) {
+			controls.Output.setValue("Column or Row array is empty!\nStart values should be lower than end values. Check your input and try again.");
+			return;
+		}
+		if(way) { //A1, A2, A3...
+			A.forEach(function(a, i) {
+				if(i>0) {out += "\n"}
+				N.forEach(function(n, j) {
+					if(j>0) {out += "\n"}
+					out += a + n;
+				});
+			});
+		}
+		else { //A1, B1, C1...
+			N.forEach(function(n, i) {
+				if(i>0) {out += "\n"}
+				A.forEach(function(a, j) {
+					if(j>0) {out += "\n"}
+					out += a + n;
+				});
+			});
+		}
+		controls.Output.setValue(out);
 	}
 //*******************
 //SAVE & LOAD METHODS

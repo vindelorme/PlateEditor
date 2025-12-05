@@ -180,6 +180,20 @@ class Result {
 			return Mapper.cleanValue(v);
 		});
 	}
+	static matrixToCol(controls) { //Converts a tab-separated matrix data array into a single column using the values in controls
+		let out = "";
+		let input = controls.DataInput.getValue();
+		let data = input.split("\n").map(function(i) {return i.split("\t")}); //Array of Array containing the data. Each array element is a row of data
+		let column = data[0].length; //We suppose the data are well formed and all rows have the same number of elements
+		for(let j=0; j<column; j++) {
+			if(j>0) {out += "\n"}
+			data.forEach(function(row, i) {
+				if(i>0) {out += "\n"}
+				out += row[j];
+			});
+		}
+		controls.Output.setValue(out);
+	}
 	//Methods
 	draw(plateIndex, GradColors, tab, I) { //Draw heatmap for this result and the plateIndex selected
 		let plate = Editor.Plate;
