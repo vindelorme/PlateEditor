@@ -113,7 +113,7 @@ class Section {
 				Click: function() {this.printable()}.bind(this),
 			}
 		];
-		if(this.Summary === false) {bar.push(
+		if(this.Type == "Single" && this.Summary === false) {bar.push(
 			{
 				Label: "Graph",
 				Title: "Click to view the data table as a graph in a new window",

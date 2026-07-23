@@ -41,7 +41,7 @@ class Bloc {
 			else {return section}
 		}
 		else { //Section not found
-			if(I.CheckOnly) {return} //In check only mode, we don't create the section
+			if(I && I.CheckOnly) {return} //In check only mode, we don't create the section
 			else {return this.newSection(name, i, I)} //Create the section
 		}
 	}

@@ -108,7 +108,7 @@ class Report {
 			default: return new Report(o);
 		}
 	}
-	static getBloc(report, name, param) { //Return the desired bloc object (identified by its name) for the report passed
+	static getBloc(report, name, param, silent) { //Return the desired bloc object (identified by its name) for the report passed
 		let found = false;
 		let i = 0;
 		let blocs = report.Blocs;
@@ -118,7 +118,7 @@ class Report {
 			else {i++}
 		}
 		if(found) { //Bloc already exists, call it back
-			report.Output.Tabs[i].set("Enabled"); //Blocs that are called can be set back as enabled
+			if(silent === undefined) {report.Output.Tabs[i].set("Enabled")} //Blocs that are called can be set back as enabled
 			return report.Blocs[i];
 		}
 		else { //Create the bloc
