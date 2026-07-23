@@ -123,12 +123,9 @@ class RespTable {
 		return html;
 	}
 	headers() { //Prepare the headers for the array
-		if(this.Headers) {var headers = this.Headers} //Headers were directly provided
-		else {
-			if(this.Fields) {var headers = this.Fields} //Headers are fields from object
-			else {return ""} //No headers available, leave
-		}
-		var html = "<tr>"; //Start a header row
+		let headers = this.Fields;
+		if(this.Headers !== undefined) {headers = this.Headers} //Headers were directly provided
+		let html = "<tr>"; //Start a header row
 		if(this.RowNumbers) {html += "<th>#</th>"}
 		headers.forEach(function(h) { //Add the provided headers
 			html += "<th>" + h + "</th>";
@@ -138,13 +135,10 @@ class RespTable {
 	}
 	extractData(O) { //Extract the desired data from the input object and return them as a readable array
 		if(this.Fields) { //In this case, an object is expected, so lookup for the attribute name supplied and returns the value
-			var out = [];
-			var keys = Object.keys(O);
-			var values = Object.values(O);
+			let out = [];
 			this.Fields.forEach(function(f) {
-				let index = keys.findIndex(function(k) {return(k == f)});
-				let val = values[index];
-				if(index > -1) {
+				let val = O[f];
+				if(val !== undefined) {
 					if(f == "Color" || f == "color") {out.push("<span style=\"background-color: " + val + "; border: 1px solid black\">&nbsp;&nbsp;&nbsp;&nbsp;</span>")} //Colors get special treatment
 					else {
 						if(typeof(val) == "boolean") { //Booleans are outputed with a symbol

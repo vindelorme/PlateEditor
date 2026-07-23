@@ -4,7 +4,8 @@
 class Bloc {
 	constructor(I) {
 		this.ID = I.ID;
-		this.Name = I.Name; //Internal name
+		this.Name = I.Name; //Displayed name
+		this.Parameter = I.Parameter; //Parameter name
 		this.File = I.File; //Name of the file associated to this bloc
 		this.Sections = [];
 		this.SectionsTab = new TabControl({ //Tab to manipulate the Section objects

@@ -22,7 +22,16 @@ class Reporter {
 	static header(I) { //Prepare the header for the html report page
 		let title = (I.Title || "Report");
 		let html = this.htmlHeader(I.Method);
-		html +="\t<script type=\"text/javascript\">window.onload = function() {Analyzer.init({Method: \"" + I.Method + "\", Title: \"" + title + "\"})}</script>\n"; //Script to init the Analyzer on loading the page
+		if(I.Grapher !== undefined) { //Send the data to grapher
+			html += "\t<script type=\"text/javascript\" src=\"dist/grapher.min.js\"></script>\n"; //Load the grapher script and css
+			html += "\t<link href=\"dist/grapher-styles.css\" rel=\"stylesheet\" type=\"text/css\">\n";
+			html += "\t<script type=\"text/javascript\">window.onload = function() {";
+				html += "Grapher.init({Data: " + I.Grapher.Data + ", MetaData: " + I.Grapher.MetaData + ", Type: \"" + I.Grapher.Type + "\", ResolvedNames: " + I.Grapher.ResolvedNames + "})";
+			html += "}</script>\n"; //Script to init the Grapher with the data on loading the page
+		}
+		else { //Open the Analyzer
+			html +="\t<script type=\"text/javascript\">window.onload = function() {Analyzer.init({Method: \"" + I.Method + "\", Title: \"" + title + "\"})}</script>\n"; //Script to init the Analyzer on loading the page
+		}
 		html += "</head>\n";
 		html += "<body style=\"font-family: arial; font-size: 16px\">\n";
 		html += "<div id=\"Header\">\n"; //Header
@@ -55,6 +64,10 @@ class Reporter {
 		h += "</head>\n";
 		h += "<body style=\"font-family: arial; font-size: 16px\">\n";
 		this.openPage(h + html + "\n</body></html>");
+	}
+	static toGraph(I) { //Send the tables data to Grapher for a plot
+		let report = this.header({Title: "Grapher", Method: "Grapher", Grapher: I}) + this.footer(); //Assemble the report
+		this.openPage(report);
 	}
 	static combination(o, I) { //Compute the combinations of unique elements by checking concentrations and tags overlap
 		let out = {};

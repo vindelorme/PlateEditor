@@ -199,7 +199,6 @@ class Analyzer {
 		}
 	}
 	static arrayToColumn_Txt(i, json, F, headers) { //Produce a column output for the subgroup object i, in a txt format
-		console.log(i, json, F, headers);
 		let out = "";
 		let MaxRow = json.Groups.reduce(function(acc, val) {return Math.max(acc, val.DataPoints[i].length)}, 0); //Maximum number of row to expect
 		let gap = this.blankCell("txt"); //Gap to append to each row to keep the alignment

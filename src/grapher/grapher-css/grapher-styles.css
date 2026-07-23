@@ -1,0 +1,98 @@
+#Main {}
+#Grapher_Menu {
+	width: 20%;
+	margin-right: 20px;
+	min-width: 370px;
+	float: left;
+	overflow: auto;
+	max-height: 90vh;
+	overflow: auto;
+}
+#Grapher_Output {
+	overflow: auto;
+}
+.Structure {
+	border-collapse: collapse;
+	float: left;
+}
+.Structure td {
+	padding: 0px;
+}
+.YArea {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+.YAreaTitle {
+	writing-mode: sideways-lr;
+	text-align: center;
+}
+.XArea {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-around;
+}
+.XAreaTitle {
+	text-align: center;
+}
+.XAxis_Hor {
+	overflow: auto;
+	text-align: center;
+}
+.XAxis_Angled {
+	writing-mode: sideways-lr;
+	transform: rotate(45deg);
+	transform-origin: top;
+	text-align: right;
+}
+.XAxis_Sideway {
+	writing-mode: sideways-lr;
+	text-align: right;
+	overflow: auto;
+}
+.XAreaHeader {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-around;
+	text-align: center;
+}
+.XAreaWrapping {
+	text-align: center;
+}
+.XAreaWrappingHead {
+	text-align: center;
+}
+.Graph_Wrapping {
+	overflow: scroll;
+	max-width: 75dvw;
+	padding: 5px;
+}
+.Bloc_Wrapping {
+	float: left;
+}
+.Legend {
+	float: left;
+}
+.LegendTable {
+	border-collapse: collapse;
+}
+.LegendTable td {
+	padding: 0px;
+}
+.GraphTitle {
+	text-align: center;
+}
+/*
+#Tooltip {
+	border: 1px solid blue;
+	font-size: 0.8em;
+	padding: 5px;
+	display: none;
+	position: fixed;
+	background-color: white; 
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-left-radius: 3px;
+	border-bottom-right-radius: 3px;
+}
+*/

@@ -5,9 +5,9 @@ class Form {
 	constructor() {}
 	//Static Methods
 	static open(I) { //Open the form with the provided options: ID, Title, Size, Buttons, HTML, OnInit
-		if(I === undefined) {console.error("No options provided to Form.open(). Aborted"); return} //Check for options
+		if(I === undefined) {console.warn("No options provided to Form.open(). Aborted"); return} //Check for options
 		let id = I.ID;
-		if(id === undefined || id === "") {console.error("No id provided to Form.open(). Aborted"); return} //Check for id
+		if(id === undefined || id === "") {console.warn("No id provided to Form.open(). Aborted"); return} //Check for id
 		if(this.Dialogs) { //Property already defined, add the mask only if no dialog opened
 			if(this.Dialogs == 0) {this.addMask()}
 			this.Dialogs++;
@@ -23,7 +23,7 @@ class Form {
 		this.initForm(I); //Create the form
 	}
 	static close(id) { //Close the form with the provided id
-		if(id === undefined || id === "") {console.error("No options provided to Form.close(). Aborted"); return} //Check for id
+		if(id === undefined || id === "") {console.warn("No options provided to Form.close(). Aborted"); return} //Check for id
 		let f = GetId(id);
 		if(f) {f.remove()} //Remove the form if it exists
 		this.closeMask(); //Remove the mask

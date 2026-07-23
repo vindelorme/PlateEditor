@@ -9,6 +9,7 @@ class Section {
 		this.Data = undefined; //Data stored for this section
 		this.Type = (I.Type || "Single"); //Defines the table types: Single, StatsTable or Multiple
 		if(I.Summary !== undefined) {this.Summary = true}
+		else {this.Summary = false}
 		let json = I.JSON; //Must be supplied for StatsTable and multiple types
 		switch(this.Type) { //Create tables when appropriate
 			case "StatsTable":
@@ -40,24 +41,44 @@ class Section {
 		let name = "(" + names[0] + ")_" + names[1] + "_[" + names[2] + "]"; //Merge the names together into a single string: (fileName)_BlocName_[SectionName]
 		return name.replace(/_{2,}/g, '_'); //Eliminate consecutive _
 	}
-	static fileHeader(s) { //Prepare a header for the file to be exported, that summarizes exactly where these data belongs to
-		let header = "[File metadata]\n";
-		header += "Result file: " + s.Bloc.File + "\n";
-		header += "Parameter: " + s.Bloc.Name + "\n";
-		header += "Table: " + s.Name + "\n";
-		header += "Plate: " + Analyzer.Report.UI.Plate.Selected + "\n";
+	static metaData(s) { //Returns an object containing the metadata for this section
+		let m = {
+			Result_File: s.Bloc.File,
+			BlocName: s.Bloc.Name,
+			Parameter: s.Bloc.Parameter,
+			Table: s.Name,
+			Plate: Analyzer.Report.UI.Plate.Selected
+		};
 		let ranges = Analyzer.Report.Ranges;
 		if(ranges !== undefined && ranges.length > 0) { //If ranges exist, output the metadata for them
 			ranges.forEach(function(r, i) { //Loop the ranges
 				let d = Analyzer.Report.UI["Definition_" + i]; //Corresponding definition
 				if(d !== undefined) { //If it exists
-					header += "Definition plate for range '" + r.Name + "': " + d.Selected + "\n";
+					m.Range = r.Name;
+					m.Definition_plate = d.Selected;
 				}
 			});
 		}
+		return m;
+	}
+	static metaDataToHeader(m, I) { //Converts the metadata into a header for a file or html page
+		let NewLine = "\n";
+		if(I && I.HTML) {NewLine = "<br>"}
+		let header = "Result file: " + m.Result_File + NewLine;
+		header += "Parameter: " + m.BlocName + NewLine;
+		header += "Table: " + m.Table + NewLine;
+		header += "Plate: " + m.Plate;
+		if(m.Range !== undefined) {header += NewLine + "Definition plate for range '" + m.Range + "': " + m.Definition_plate}
+		return header;
+	}
+	static fileHeader(s) { //Prepare a header for the file to be exported, that summarizes exactly where these data belongs to
+		let NewLine = "\n";
+		let m = this.metaData(s);
+		let header = "[Metadata]" + NewLine;
+		header += this.metaDataToHeader(m);
 		let agg = Analyzer.Report.UI.DataView.Selected;
-		if(agg !== undefined) {header += "Aggregation: " + agg + "\n"} //Aggregation for reports supporting it
-		return header + "\n" + "[Data]\n";
+		if(agg !== undefined) {header += NewLine + "Aggregation: " + agg + NewLine} //Aggregation for reports supporting it
+		return header + NewLine + "[Data]" + NewLine;
 	}
 	//Getter, Setter
 	get TablesHtml() {
@@ -80,10 +101,26 @@ class Section {
 	}
 	activateControls() { //Activate control elements within this section
 		let me = GetId(this.ID);
-		me.previousSibling.append(LinkCtrl.buttonBar([
-			{Label: "Export", Title: "Click to export the data for this section", Click: function() {this.export({FileName: Section.fullName(this)})}.bind(this)},
-			{Label: "Printable version", Title: "Click to view the data in a new window, allowing for printing or easy copy-pasting in other applications", Click: function() {this.printable()}.bind(this)},
-		]));
+		let bar = [
+			{
+				Label: "Export", 
+				Title: "Click to export the data for this section",
+				Click: function() {this.export({FileName: Section.fullName(this)})}.bind(this),
+			},
+			{
+				Label: "Printable version",
+				Title: "Click to view the data in a new window, allowing for printing or easy copy-pasting in other applications",
+				Click: function() {this.printable()}.bind(this),
+			}
+		];
+		if(this.Summary === false) {bar.push(
+			{
+				Label: "Graph",
+				Title: "Click to view the data table as a graph in a new window",
+				Click: function() {this.toGraph()}.bind(this),
+			}
+		)}
+		me.previousSibling.append(LinkCtrl.buttonBar(bar));
 	}
 	replaceContent(content) {
 		let me = GetId(this.ID);
@@ -139,6 +176,15 @@ class Section {
 	}
 	printable() { //Open a new window containing only the table and allowing easy copy-pasting / printing
 		Reporter.printable(GetId(this.ID).innerHTML);
+		return this;
+	}
+	toGraph() { //Open grapher and display the result table as a graph
+		Reporter.toGraph({
+			Data: this.Data,
+			MetaData: JSON.stringify(Section.metaData(this)), //Send the metadata as txt
+			ResolvedNames: JSON.stringify(Analyzer.Report.ResolvedNames),
+			Type: "Bar",
+		}); 
 		return this;
 	}
 	addRow(json, plate, I) {

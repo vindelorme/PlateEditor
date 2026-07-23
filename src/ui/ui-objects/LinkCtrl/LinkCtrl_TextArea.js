@@ -5,6 +5,7 @@ class LinkCtrl_TextArea extends LinkCtrl {
 	constructor(I) {
 		super(I); //Call the super class constructor and pass in the input object
 		this.Type = "TextArea";
+		this.Placeholder = I.Placeholder;
 		return this;
 	}
 	//Methods
@@ -13,7 +14,9 @@ class LinkCtrl_TextArea extends LinkCtrl {
 		if(this.Disabled) {html += " LinkCtrl_TextAreaDisabled\""}
 		else {html += " LinkCtrl_TextAreaEnabled\""}
 		if(this.Disabled) {html += " disabled"}
-		html += " value=\"" + this.Value + "\">" + this.Value + "</textarea>"; //For textarea, default value on init should be within the node
+		html += " value=\"" + this.Value + "\"";
+		if(this.Placeholder !== undefined) {html += " placeholder=\"" + this.Placeholder + "\""}
+		html += ">" + this.Value + "</textarea>"; //For textarea, default value on init should be within the node
 		if(this.NewLine) {html += "<br>"} //Newline after this control if needed
 		return html;
 	}

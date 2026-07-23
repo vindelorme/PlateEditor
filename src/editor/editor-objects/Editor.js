@@ -672,8 +672,8 @@ class Editor {
 		let id = "Form_toColumn";
 		let html = "";
 		let controls = {
-			DataInput: LinkCtrl.new("TextArea", {ID: "Input", Default: "Paste your data here"}),
-			Output: LinkCtrl.new("TextArea", {ID: "Output", Default: "Converted data will be shown here"}),
+			DataInput: LinkCtrl.new("TextArea", {ID: "Input", Default: "", Placeholder: "Paste your data here"}),
+			Output: LinkCtrl.new("TextArea", {ID: "Output", Default: "", Placeholder: "Converted data will be shown here"}),
 		}
 		html += "<p>Converts plate data given as a matrix (2D array) into a single column. All headers should be excluded! Paste only the tab-separated data below:</p>";
 		html += "<div id=\"Input\" style=\"float:left\"></div>";

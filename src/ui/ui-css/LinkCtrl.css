@@ -81,6 +81,12 @@
 	cursor: pointer;
 	border: 1px solid black;
 }
+.LinkCtrl_Shape {
+	cursor: pointer;
+	border: 1px solid black;
+	background-color: white;
+	vertical-align: center;
+}
 .LinkCtrl_Number {
 	text-align:right;
 }

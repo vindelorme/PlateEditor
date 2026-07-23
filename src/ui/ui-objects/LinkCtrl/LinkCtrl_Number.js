@@ -6,8 +6,10 @@ class LinkCtrl_Number extends LinkCtrl {
 		super(I); //Call the super class constructor and pass in the input object
 		this.Type = "Number";
 		this.Size = (I.Size || 5); //Size of the control
-		this.Min = (I.Min || -Infinity); //Minimum value accepted
-		this.Max = (I.Max || Infinity); //Maximum value accepted
+		if(I.Min !== undefined) {this.Min = I.Min}
+		else {this.Min = -Infinity} //Minimum value accepted
+		if(I.Max !== undefined) {this.Max = I.Max}
+		else {this.Max = Infinity} //Maximum value accepted
 		this.Step = (I.Step || "any"); //How much to increment between each step
 		return this;
 	}

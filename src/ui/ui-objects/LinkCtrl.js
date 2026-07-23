@@ -41,6 +41,7 @@ class LinkCtrl {
 			case "File": return new LinkCtrl_File(I);
 			case "Button": return new LinkCtrl_Button(I);
 			case "ButtonBar": return new LinkCtrl_ButtonBar(I);
+			case "Shape": return new LinkCtrl_Shape(I);
 			default: //Exit if the type is unknown
 				console.error("Unknown type requested for LinkCtrl (" + type + "). Aborted.");
 				return;
@@ -191,7 +192,7 @@ class LinkCtrl {
 			else {container.innerHTML = html} //erase
 		}
 		this.bindEvents();
-		return this; //For chaining, with .change() in particular
+		return this; //For chaining
 	}
 	bindEvents() {console.warn("bindEvents function not defined for this control; no events attached")} //Attach the events to the control. Specific to each control and added here only as default fallback
 	setValue(v) { //Set the value of the control, updating the html classes if possible

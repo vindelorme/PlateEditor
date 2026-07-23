@@ -108,7 +108,7 @@ class Report {
 			default: return new Report(o);
 		}
 	}
-	static getBloc(report, name) { //Return the desired bloc object (identified by its name) for the report passed
+	static getBloc(report, name, param) { //Return the desired bloc object (identified by its name) for the report passed
 		let found = false;
 		let i = 0;
 		let blocs = report.Blocs;
@@ -123,7 +123,7 @@ class Report {
 		}
 		else { //Create the bloc
 			report.Result.OpenedTab = i; //Set the default state on bloc opening
-			return report.newBloc(name, i);
+			return report.newBloc(name, i, param);
 		} 
 	}
 	static *plateIterator(source) { //A generator function that create a generator object for counting plates
@@ -180,7 +180,7 @@ class Report {
 		let section = report.Blocs[n].getSection("Plate Summary");
 		switch(section.Type) {
 			case "Multiple": //Control report
-				let array = section.Tables[0].Data.Data[0].Groups[0].DataPoints[0]; //All tables share the same contents in th plate column
+				let array = section.Tables[0].Data.Data[0].Groups[0].DataPoints[0]; //All tables share the same contents in the plate column
 				return array.includes(currentPlate);
 			case "StatsTable":
 				let source = section.Tables[0].DataArray[0].Groups[0].DataPoints[0]; //The structure is a bit different
@@ -295,9 +295,9 @@ class Report {
 		target.innerHTML = O.Html; //Output
 		return this;
 	}
-	newBloc(name, index) {
+	newBloc(name, index, param) {
 		let id = "Bloc_" + index;
-		let bloc = new Bloc({Name: name, ID: id, File: this.Result.Name});
+		let bloc = new Bloc({Parameter: param, Name: name, ID: id, File: this.Result.Name});
 		this.Blocs.push(bloc);
 		this.Output.addTab({Label: name, SetActive: true, Content: {Type: "HTML", Value: "<p>Data for Result file: " + this.Result.Name + "</p><div id=\"" + id + "\"><span class=\"Warning\">Initializing the report, please wait...</span></div>"} });
 		return bloc.init();
@@ -382,7 +382,7 @@ class Report {
 	waitMessage(params) { //Display a waiting message
 		let msg = "<br><span class=\"Warning\">Parsing values, please wait...</span>";
 		params.forEach(function(param, i) { //Process all parameters
-			let bloc = Report.getBloc(this, Report.blocName(param));
+			let bloc = Report.getBloc(this, Report.blocName(param), param);
 			bloc.Sections.forEach(function(s) {
 				if(s.Summary === undefined) {s.replaceContent(msg)}
 			});
