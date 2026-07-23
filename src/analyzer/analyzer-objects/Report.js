@@ -177,7 +177,8 @@ class Report {
 	static hasData(report, currentPlate) { //Check if the data for the plate are already available for this report
 		let n = report.FirstBlocIndex;
 		if(n === undefined) {return false} //No blocs available for this Report
-		let section = report.Blocs[n].getSection("Plate Summary");
+		let section = report.Blocs[n].getSection("Plate Summary", {CheckOnly: true});
+		if(section === undefined) {return false} //Section Plate summary does not exist yet, so the data or sure not to be here
 		switch(section.Type) {
 			case "Multiple": //Control report
 				let array = section.Tables[0].Data.Data[0].Groups[0].DataPoints[0]; //All tables share the same contents in the plate column

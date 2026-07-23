@@ -14,7 +14,7 @@ class Section {
 		switch(this.Type) { //Create tables when appropriate
 			case "StatsTable":
 				this.Tables = [];
-				if(json.Wrapping) { //Use the level 2 wrapping to create as many tables as needed
+				if(json.Wrapping !== undefined) { //Use the level 2 wrapping to create as many tables as needed
 					json.Wrapping.Data.Groups.forEach(function(g, j) {
 						let id = this.ID + "_DT_" + j;
 						this.Tables.push(new StatsTable(id, g, json));
@@ -192,9 +192,11 @@ class Section {
 			console.warn("This section has no Tables defined to push new row!", this);
 			return;
 		}
-		this.Tables.forEach(function(t, i) { //Update the tables
-			t.addRow(json.Data[i], plate, I);
-		});
+		else {
+			this.Tables.forEach(function(t, i) { //Update the tables
+				t.addRow(json.Data[i], plate, I);
+			});
+		}
 		return this;
 	}
 	//**********************************************************************************
