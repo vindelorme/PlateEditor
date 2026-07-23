@@ -22,9 +22,14 @@ class Graph {
 		let array = [];
 		if(wrapping !== undefined && wrapping.Data.Groups !== undefined) { //Use the Cols level 2 to define the Blocs
 			let l = wrapping.Data.Groups.length;
-			array = wrapping.Data.Groups.map(function(g, i) {
-				return new DataBloc({Index: i, Parent: this, Group: g, GraphIndex: n, JSON: I.JSON, GroupLength: l, ID: this.Anchors.BlocArea + "_" + i});
-			}, this);
+			if(l > 0) { //If the group array is not empty, use it to define the blocs
+				array = wrapping.Data.Groups.map(function(g, i) {
+					return new DataBloc({Index: i, Parent: this, Group: g, GraphIndex: n, JSON: I.JSON, GroupLength: l, ID: this.Anchors.BlocArea + "_" + i});
+				}, this);
+			}
+			else { //Otherwise, there will be only one bloc
+				array = [new DataBloc({Index: 0, Parent: this, GraphIndex: n, JSON: I.JSON, GroupLength: 0, ID: this.Anchors.BlocArea + "_0"})];
+			}
 		}
 		else { //If no wrapping exists, there will be only one bloc
 			array = [new DataBloc({Index: 0, Parent: this, GraphIndex: n, JSON: I.JSON, GroupLength: 0, ID: this.Anchors.BlocArea + "_0"})];
@@ -81,6 +86,7 @@ class Graph {
 	initOptions() {
 		this.DataBlocs.init();
 		Object.values(this.Options).forEach(function(o) {o.init()});
+		console.log(this);
 		this.DataBlocs.Selected[0].initOptions();
 		return this;
 	}
