@@ -47,15 +47,17 @@ class Section {
 			BlocName: s.Bloc.Name,
 			Parameter: s.Bloc.Parameter,
 			Table: s.Name,
-			Plate: Analyzer.Report.UI.Plate.Selected
+			Plate: Analyzer.Report.UI.Plate.Selected,
+			Range: [],
+			Definition_plate: [],
 		};
 		let ranges = Analyzer.Report.Ranges;
 		if(ranges !== undefined && ranges.length > 0) { //If ranges exist, output the metadata for them
 			ranges.forEach(function(r, i) { //Loop the ranges
 				let d = Analyzer.Report.UI["Definition_" + i]; //Corresponding definition
 				if(d !== undefined) { //If it exists
-					m.Range = r.Name;
-					m.Definition_plate = d.Selected;
+					m.Range.push(r.Name);
+					m.Definition_plate.push(d.Selected);
 				}
 			});
 		}
@@ -68,7 +70,12 @@ class Section {
 		header += "Parameter: " + m.BlocName + NewLine;
 		header += "Table: " + m.Table + NewLine;
 		header += "Plate: " + m.Plate;
-		if(m.Range !== undefined) {header += NewLine + "Definition plate for range '" + m.Range + "': " + m.Definition_plate}
+		//if(m.Range !== undefined) {header += NewLine + "Definition plate for range '" + m.Range + "': " + m.Definition_plate}
+		if(m.Range.length > 0) {
+			m.Range.forEach(function(r, i) {
+				header += NewLine + "Definition plate for range '" + r + "': " + m.Definition_plate[i];
+			});
+		}
 		return header;
 	}
 	static fileHeader(s) { //Prepare a header for the file to be exported, that summarizes exactly where these data belongs to

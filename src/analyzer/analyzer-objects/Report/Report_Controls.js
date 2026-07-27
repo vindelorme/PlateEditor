@@ -59,8 +59,8 @@ class Report_Controls extends Report {
 		return this.Changed;
 	}
 	//Methods
-	do() {
-		this.compute();
+	do(I) {
+		this.compute(I);
 		return this;
 	}
 	lockMenu() { //Lock the menu tables
@@ -125,7 +125,7 @@ class Report_Controls extends Report {
 			});
 		}.bind(this));
 	}
-	compute() { //Compute the z-factor for selected items
+	compute(I) { //Compute the z-factor for selected items
 		this.lockMenu(); //Block interaction with the menu tables
 		let neg = this.UI.N.Selected[0];
 		let pos = this.UI.P.Selected[0];
@@ -139,6 +139,7 @@ class Report_Controls extends Report {
 					this.plateSummary(data, i, param, plate, JSONarray);
 				}
 			}, this);
+			if(I && I.onFinish) {I.onFinish()}
 			this.update(); //Update the sections
 			this.unlockMenu();
 		}.bind(this));
@@ -163,7 +164,7 @@ class Report_Controls extends Report {
 			},
 			StatRows: true,
 		}
-		let section = Report.getBloc(this, Report.blocName(param)).getSection("Values", {Type: "Single"});
+		let section = Report.getBloc(this, Report.blocName(param), undefined, {Enable: true}).getSection("Values", {Type: "Single"});
 		section.Data = JSON.stringify(json);
 		return this;
 	}
@@ -208,7 +209,7 @@ class Report_Controls extends Report {
 				Rows: [{Name: "Negative Controls", Span: data.Neg.length}],
 			};
 		});
-		let section = Report.getBloc(this, Report.blocName(param)).getSection("Performance indicators", {Type: "Multiple", JSON: [jsonZ, jsonW]});
+		let section = Report.getBloc(this, Report.blocName(param), undefined, {Enable: true}).getSection("Performance indicators", {Type: "Multiple", JSON: [jsonZ, jsonW]});
 		return [jsonZ, jsonW];
 	}
 	zScoreFromStats(neg, pos) { //Compute the z score from the stats calculated from the +/- controls
@@ -254,7 +255,7 @@ class Report_Controls extends Report {
 				jsonArray.push(json); //Push the newly build json
 			}, this);
 		}, this);
-		let section = Report.getBloc(this, Report.blocName(param)).getSection("Plate Summary", {Type: "Multiple", JSON: jsonArray, Summary: true, Changed: this.HasChanged});
+		let section = Report.getBloc(this, Report.blocName(param), undefined, {Enable: true}).getSection("Plate Summary", {Type: "Multiple", JSON: jsonArray, Summary: true, Changed: this.HasChanged});
 		section.addRow({Data: jsonArray}, plate);
 	}
 	async zScoreAllPlates() { //Compute zScore for all available plates. Use a counter and a yielding loop to process the plates sequentially and prevent memory overflow

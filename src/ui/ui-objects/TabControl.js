@@ -43,14 +43,14 @@ class TabControl {
 		}
 		return -1; //Fallback if nothing is found
 	}
-	disable() { //Set the TabControl in disabled state and update the TabPanels accordingly
+	disable(I) { //Set the TabControl in disabled state and update the TabPanels accordingly
 		this.Disabled = true;
-		this.Tabs.forEach(function(t) {t.set("Disabled")});
+		this.Tabs.forEach(function(t) {t.set("Disabled", I)});
 		return this;
 	}
-	enable() { //Set the TabControl in enabled state and update the TabPanels accordingly
+	enable(I) { //Set the TabControl in enabled state and update the TabPanels accordingly
 		this.Disabled = false;
-		this.Tabs.forEach(function(t) {t.set("Enabled")});
+		this.Tabs.forEach(function(t) {t.set("Enabled"), I});
 		return this;
 	}
 	active() { //Returns the index of the active tab

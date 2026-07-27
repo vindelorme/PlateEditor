@@ -27,8 +27,7 @@ class Report {
 			onSelect: function(s, os, i, oi) { //What to do on result selection
 				if(i[0] == oi[0]) {return} //Same result is selected, do nothing
 				Report.saveState(this, oi[0]); //Save the current tab opened for the old selection (selected result)
-				this.setPlates().do();
-				Report.restoreState(this, i[0]); //Restore the opened tab for the newly opened result
+				this.setPlates().do({onFinish: function() {Report.restoreState(this, i[0])}.bind(this)});
 			}.bind(this), FullWidth: true, RowNumbers: true, NoControls: true,
 		});
 		this.Blocs = []; //Array of bloc objects
@@ -108,7 +107,7 @@ class Report {
 			default: return new Report(o);
 		}
 	}
-	static getBloc(report, name, param, silent) { //Return the desired bloc object (identified by its name) for the report passed
+	static getBloc(report, name, param, I) { //Return the desired bloc object (identified by its name) for the report passed
 		let found = false;
 		let i = 0;
 		let blocs = report.Blocs;
@@ -118,13 +117,14 @@ class Report {
 			else {i++}
 		}
 		if(found) { //Bloc already exists, call it back
-			if(silent === undefined) {report.Output.Tabs[i].set("Enabled")} //Blocs that are called can be set back as enabled
+			if(I !== undefined && I.Enable === true) {report.Output.Tabs[i].set("Enabled", {HeaderOnly: true})} //Blocs that are called can be set back as enabled
 			return report.Blocs[i];
 		}
-		else { //Create the bloc
+		else { //Create the bloc when needed
+			if(I !== undefined && I.FindOnly === true) {return} //Case where we don't need to create the bloc, just find it
 			report.Result.OpenedTab = i; //Set the default state on bloc opening
 			return report.newBloc(name, i, param);
-		} 
+		}
 	}
 	static *plateIterator(source) { //A generator function that create a generator object for counting plates
 		let l = source.length;
@@ -164,12 +164,18 @@ class Report {
 			.replace(/_{2,}/g, "_"); //Collapse consecutive "_" into one
 	}
 	static saveState(r, resultIndex) { //Save the state of the panels opened for the result of index passed, for the report provided
-		r.Results.Array[resultIndex].OpenedTab = r.Output.active(); //Save the active bloc
-		r.Output.disable(); //Disable all the tabs. Tabs that are called by getBloc() later during the do() will be set as active
+		let n = r.Output.active();
+		if(n !== undefined) { //This happens when the tabControl has tabs
+			r.Results.Array[resultIndex].OpenedTab = n; //Save the active bloc
+			r.Output.Tabs[n].set("Resting", {NoAnimation: true});
+			r.Output.disable({HeaderOnly: true}); //Disable all the tabs. Active blocs will be enabled during the do()
+		}
 	}
 	static restoreState(r, resultIndex) {
 		let n = r.Results.Array[resultIndex].OpenedTab;
-		if(n !== undefined) {r.Output.jumpTo(n)} //Need a control for the first opening case
+		if(n !== undefined && r.Output.Tabs[n] !== undefined) { //Need a control for the first opening case
+			r.Output.jumpTo(n);
+		} 
 	}
 	static blocName(param) { //Build a unique bloc name using the properties of the parameter object provided
 		return param.ResultIndex + ". " + param.Name;

@@ -138,9 +138,9 @@ class Report_Grouped extends Report {
 		return change;
 	}
 	//Methods
-	do() {
+	do(I) {
 		if(this.Ready) { //Names were already resolved, proceed
-			this.compute();
+			this.compute(I);
 		}
 		else { //First resolve the names
 			this.resolveAllNames().then(function() { //Start by recovering all definitions names
@@ -363,23 +363,27 @@ class Report_Grouped extends Report {
 		Report_Grouped.msg_clear(); //No more message needed
 		return true;
 	}
-	compute() { //Do the job
+	compute(I) { //Do the job
 		let rows = this.UI.Selected.Rows;
 		let cols = this.UI.Selected.Cols;
 		if(this.isReady(rows, cols) == false) {return this};
 		let plate = this.SelectedPlate;
 		this.getValues(plate).then(function(data) {
 			data.Params.forEach(function(p, i) {
-				let section = Report.getBloc(this, Report.blocName(p)).getSection("Values", {Type: "Single"});
+				let section = Report.getBloc(this, Report.blocName(p), undefined, {Enable: true}).getSection("Values", {Type: "Single"}); //Enable the bloc while updating it
 				let json = Analyzer.encodeJSON(rows, cols, data.Values[i]); //Get a JSON object as data
-				section.Data = JSON.stringify(json); //Store it as a string
-				if(this.ColumnOnly && this.Result.PlatesID.length > 1) { //If there are more than one plate in the result file, also create/update the Plate summary table (only for column reports)
-				//json.StatRows = true; //Activate the statistical rows at the end of the table	
-				let summary = Report.getBloc(this, Report.blocName(p)).getSection("Plate Summary", {Type: "StatsTable", Summary: true, JSON: json, Changed: this.HasChanged});
-					summary.addRow(json, plate);
+				if(this.ColumnOnly) { //For column report
+					json.StatRows = true; //Activate the statistical rows at the end of the table	
+					if(this.Result.PlatesID.length > 1) { //If there are more than one plate in the result file, also create/update the Plate summary table (only for column reports)
+						let summary = Report.getBloc(this, Report.blocName(p), undefined, {Enable: true}) //Enable the section while updating it
+											.getSection("Plate Summary", {Type: "StatsTable", Summary: true, JSON: json, Changed: this.HasChanged});
+						summary.addRow(json, plate);
+					}
 				}
+				section.Data = JSON.stringify(json); //Store it as a string
 			}, this);
 			this.update(); //Update the sections
+			if(I && I.onFinish) {I.onFinish()}
 		}.bind(this));
 		return this;
 	}
@@ -388,7 +392,7 @@ class Report_Grouped extends Report {
 		let cols = this.UI.Selected.Cols;
 		if(this.isReady(rows, cols) == false) {return this};
 		this.Cancel = false;
-		let plates = this.Result.PlatesID;
+		let plates = this.Result.PlatesID.map(function(e) {return e.toString()}); //Force as string in case plate names are generic indices
 		Report.lock(this, plates.length); //Lock the report and start
 		let plateCounter = Report.plateIterator(plates); //A generator to loop over the plates
 		let current = plateCounter.next();
@@ -400,6 +404,7 @@ class Report_Grouped extends Report {
 				data.Params.forEach(function(p, i) {
 					let section = Report.getBloc(this, Report.blocName(p)).getSection("Values", {Type: "Single"});
 					let json = Analyzer.encodeJSON(rows, cols, data.Values[i]); //Get a JSON object as data
+					if(this.ColumnOnly) {json.StatRows = true}
 					section.Data = JSON.stringify(json); //Store it as a string
 					let summary = Report.getBloc(this, Report.blocName(p)).getSection("Plate Summary", {Type: "StatsTable", Summary: true, JSON: json, Changed: false});
 					summary.addRow(json, currentPlate);

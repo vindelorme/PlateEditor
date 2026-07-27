@@ -78,14 +78,29 @@ class Report_Hits extends Report {
 		return true;
 	}
 	//Methods
-	do() { //This should do nothing here
+	do(I) { //This should do nothing here
 		if(this.Ready === undefined) { //First activation of the report
 			let start = GetId("Start");
-			let b = LinkCtrl.button({Label: "Start", Title: "Click here to start computing the hits for all plates of the selected result file", Click: function() {this.compute()}.bind(this)});
+			let b = LinkCtrl.button({Label: "Start", Title: "Click here to start computing the hits for all plates of the selected result file", Click: function() {this.compute(I)}.bind(this)});
 			start.insertAdjacentHTML("beforeend", "&nbsp;");
 			start.append(b); //Place the button
 			start.insertAdjacentHTML("beforeend", "&nbsp;<span id=\"ErrorMsg\" class=\"Warning\"></span>");
 			this.Ready = true;
+		}
+		else { //After first activation, do() will be called when navigating result plates, so onFinish should be called to restore the panels
+			//
+			//
+			//NEED TO ENABLE THE TABS RELATED TO THIS RESULT FILE
+			let resultIndex = this.Results.SelectedIndices[0] + 1; //The index of the result file selected (1-based), unique
+			this.Params.forEach(function(p, i) { //Go through the parameters of this file to reactivate the tabPanels
+				p.ResultIndex = resultIndex;
+				if(p.Selected) { //This parameter is selected, reactivate the TabPanel by getting the bloc silently
+					Report.getBloc(this, Report.blocName(p), undefined, {Enable: true, FindOnly: true});
+				}
+			}, this);
+			//
+			//
+			if(I && I.onFinish) {I.onFinish()}
 		}
 		return this;
 	}
@@ -95,7 +110,7 @@ class Report_Hits extends Report {
 	updateNames() { //Function should be available to allow correct functioning of the pairing display
 		return this;
 	}
-	async compute() { //Do the job
+	async compute(I) { //Do the job
 		this.Cancel = false; //Reset to prepare a new run
 		this.Stop = false;
 		let resultIndex = this.Results.SelectedIndices[0]; //The index of the result file selected (0-based), unique
@@ -135,6 +150,7 @@ class Report_Hits extends Report {
 				break;
 			default: break;
 		}
+		if(I && I.onFinish) {I.onFinish()}
 		return this;
 	}
 	aggregateCtrl(High, Low, resultIndex, o) { //Aggregate the values for the high and low controls provided by their name
@@ -218,7 +234,7 @@ class Report_Hits extends Report {
 			};
 			if(h.N === "") {json.Data[0].Groups[0].DataPoints[0][0] = "Custom value"} //Make it pretty for the Custom Mode
 			if(l.N === "") {json.Data[0].Groups[1].DataPoints[0][0] = "Custom value"}
-			let section = Report.getBloc(this, Report.blocName(param), undefined, true).getSection("Control summary", {Type: "Single", Summary: true}); //Get the Bloc using Silent mode
+			let section = Report.getBloc(this, Report.blocName(param)).getSection("Control summary", {Type: "Single", Summary: true});
 			section.Data = JSON.stringify(json); //Save the data as string in the section
 		}, this);
 		this.update(); //Update the sections
@@ -237,7 +253,7 @@ class Report_Hits extends Report {
 			json.SyncScrolling = true;
 			diff[i] = High.Stats[resultIndex][i].Average - Low.Stats[resultIndex][i].Average;
 			counts[i] = 0; //Count of hits for each parameter
-			let s = Report.getBloc(this, Report.blocName(param), undefined, true).getSection(title, { //Get the Bloc using Silent mode
+			let s = Report.getBloc(this, Report.blocName(param)).getSection(title, {
 				Type: "Multiple",
 				JSON: [json],
 				Changed: true //Reset previous table
@@ -258,7 +274,7 @@ class Report_Hits extends Report {
 			let wellIndex = well.Index;
 			let content = this.Layout[wellIndex];
 			output.Params.forEach(function(param, i) { //Check values for all parameters
-				let section = Report.getBloc(this, Report.blocName(param), undefined, true).getSection(title, {Changed: false}); //Get the section that was initialized before. Get the Bloc using Silent mode
+				let section = Report.getBloc(this, Report.blocName(param)).getSection(title, {Changed: false}); //Get the section that was initialized before
 				if(output.Items % 2000 == 0) { //Every 2000 lines, report the progress
 					let p = GetId(section.ID).parentElement.getElementsByClassName("LineStatus")[0];
 					p.innerHTML = output.Items; //Update with the current line number
@@ -299,7 +315,7 @@ class Report_Hits extends Report {
 	}
 	reportHits(data, params, resultIndex) { //Screening done, report hits and update the waiting messages
 		params.forEach(function(param, i) { //Process all parameters
-			let bloc = Report.getBloc(this, Report.blocName(param), undefined, true); //Get the Bloc using Silent mode
+			let bloc = Report.getBloc(this, Report.blocName(param));
 			let section = bloc.getSection(data.Section);
 			let S = GetId(section.ID).parentElement; //Root for the feedback messages
 			let p = S.getElementsByClassName("HitStatus")[0]; //The paragraph with the status
@@ -342,7 +358,7 @@ class Report_Hits extends Report {
 					defPlate = pair.getPair(r.Range.Name); //Use the paired definition plate when available
 					let resolved = await def.getPlate(defPlate.Name); //Fetch all the names for this definition plate
 					params.forEach(function(param) { //Process all parameters
-						let bloc = Report.getBloc(this, Report.blocName(param), undefined, true); //Get the Bloc using Silent mode
+						let bloc = Report.getBloc(this, Report.blocName(param));
 						let section = bloc.getSection(data.Section);
 						if(count == 0) { //On the first pass, clean up the hitStatus that is now indicated as the table title
 							GetId(section.ID).parentElement.getElementsByClassName("HitStatus")[0].remove();
@@ -379,7 +395,7 @@ class Report_Hits extends Report {
 			o.Counts[i] = 0;
 			let json = this.emptyJSON();
 			json.SyncScrolling = true; //Allow sync scrolling of the report table
-			let section = Report.getBloc(this, Report.blocName(param), undefined, true).getSection(o.Title, { //Get the Bloc using Silent mode
+			let section = Report.getBloc(this, Report.blocName(param)).getSection(o.Title, {
 				Type: "Multiple",
 				JSON: [json],
 				Changed: true //Reset previous table
@@ -461,7 +477,7 @@ class Report_Hits extends Report {
 	getHits(High, Low, resultIndex, o, currentPlate, toResolve, running) { //Find the hits in the values stored for the current plate
 		let t = o.Threshold;
 		o.Params.forEach(function(param, i) { //Check values for all paramaters
-			let section = Report.getBloc(this, Report.blocName(param), undefined, true).getSection(o.Title); //Get the section that was initialized before. Get the Bloc using Silent mode
+			let section = Report.getBloc(this, Report.blocName(param)).getSection(o.Title); //Get the section that was initialized before
 			let diff = High.Stats[resultIndex][i].Average - Low.Stats[resultIndex][i].Average;
 			if(diff != 0) { //Do something only if the diff is not zero
 				o.Values[i].P.forEach(function(value) { //Loop all the values for this parameter
@@ -495,7 +511,7 @@ class Report_Hits extends Report {
 	done(data, params) { //Screening done, last clean up
 		if(data.Status == "Fail") {return this}
 		params.forEach(function(param, i) { //Process all parameters
-			let bloc = Report.getBloc(this, Report.blocName(param), undefined, true); //Get the Bloc using Silent mode
+			let bloc = Report.getBloc(this, Report.blocName(param), undefined, {Enable: true}); //Enable the TabPanel while updating the bloc
 			let section = bloc.getSection(data.Section);
 			let p = GetId(section.ID).parentElement.getElementsByClassName("ResolveStatus"); //The div with the resolution status
 			if(p.length >0) { //If the html element still exists, update the feedback message
@@ -525,7 +541,7 @@ class Report_Hits extends Report {
 				}]
 			}
 			let options = {Type: "StatsTable", JSON: json, Summary: true, Changed: change};
-			let section = Report.getBloc(this, Report.blocName(param), undefined, true).getSection("Plate Summary", options); //Get the Bloc using Silent mode
+			let section = Report.getBloc(this, Report.blocName(param)).getSection("Plate Summary", options);
 			section.addRow({Data: []}, plate, {
 				Stats: [ //No need to supply a json data as the stats are pre-computed
 					High.Stats[resultIndex][i],
@@ -554,7 +570,7 @@ class Report_Hits extends Report {
 	}
 	convertRangeNames(data, params) { //In case there are no defintions attached to the result file, convert the html tags back into simple names
 		params.forEach(function(param) { //Process all parameters
-			let bloc = Report.getBloc(this, Report.blocName(param), undefined, true); //Get the Bloc using Silent mode
+			let bloc = Report.getBloc(this, Report.blocName(param));
 			let section = bloc.getSection(data.Section);
 			let hitStatus = GetId(section.ID).parentElement.getElementsByClassName("HitStatus");
 			if(hitStatus.length > 0) { //If clean up has not already be done elsewhere (this happens when hit resolution is cancelled)

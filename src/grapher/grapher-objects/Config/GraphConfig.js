@@ -15,7 +15,7 @@ class GraphConfig extends Config {
 				YAxis : {
 					Min: LinkCtrl.new("Number", {ID: this.id("Scale", "YAxis"), Label: "Min", Default: 0, Preserve: true, Chain: {Index: 0} }),
 					Max: LinkCtrl.new("Number", {ID: this.id("Scale", "YAxis"), Label: "Max", Default: 0, Chain: {Index: 1, Last: true} }),
-				   Step: LinkCtrl.new("Number", {ID: this.id("Scale", "YAxis"), Label: "Step", Default: 0, Chain: {Index: 2, NewLine: true, Last: true} }),
+				   Step: LinkCtrl.new("Number", {ID: this.id("Scale", "YAxis"), Label: "Step", Default: 0, Chain: {Index: 2, NewLine: true} }),
 				  Ticks: LinkCtrl.new("Number", {ID: this.id("Scale", "YAxis"), Label: "Ticks", Default: 0, Chain: {Index: 3, Last: true} }),
 				},
 			},
